@@ -1,0 +1,609 @@
+2026-02-20 20:30:58,931 - __main__ - INFO - 🚀 Iniciando análise diária...
+2026-02-20 20:30:59,160 - __main__ - ERROR - ⚠️ Erros da análise:
+2026-02-20 20:30:59,092 - __main__ - INFO - \U0001f680 Iniciando Analisador Diário XP3 PRO v5.0
+2026-02-20 20:30:59,092 - __main__ - INFO - \U0001f680 Iniciando análise diária XP3 PRO v5.0
+2026-02-20 20:30:59,092 - __main__ - INFO - \U0001f4c5 Data: 2026-02-20 20:30:59
+2026-02-20 20:30:59,092 - __main__ - INFO - \U0001f50d Iniciando análise diária de mercado...
+2026-02-20 20:30:59,093 - __main__ - INFO - \U0001f4ca Analisando sentimento de mercado...
+2026-02-20 20:30:59,093 - __main__ - INFO - \U0001f4a1 Sentimento detectado: Volatile
+2026-02-20 20:30:59,093 - __main__ - INFO - \U0001f4aa Analisando força relativa das moedas...
+2026-02-20 20:30:59,093 - __main__ - INFO - \U0001f4f0 Verificando notícias de alto impacto...
+2026-02-20 20:30:59,093 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,093 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,093 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,093 - __main__ - INFO - \U0001f4c8 Analisando força de tendência dos pares...
+2026-02-20 20:30:59,093 - __main__ - INFO - \u2705 Selecionados 6 pares para operação
+2026-02-20 20:30:59,093 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando XAUUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCHF - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando XAUUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCHF - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,094 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,095 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,095 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,095 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDNZD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,095 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,095 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,095 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,095 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,095 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,095 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,095 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,095 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDNZD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,095 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,095 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando EURGBP - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,096 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,097 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,098 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,099 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,100 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - notícias de alto impacto detectadas
+2026-02-20 20:30:59,100 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,100 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,100 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - notícias de alto impacto detectadas
+2026-02-20 20:30:59,100 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,100 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,101 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,101 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,101 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,101 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,101 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,101 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDNZD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,101 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,101 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,101 - __main__ - INFO - \u26a0\ufe0f  Evitando EURGBP - notícias de alto impacto detectadas
+2026-02-20 20:30:59,101 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,102 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,102 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,102 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,102 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,102 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,102 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,102 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,102 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - notícias de alto impacto detectadas
+2026-02-20 20:30:59,102 - __main__ - INFO - \u26a0\ufe0f  Evitando XAUUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,102 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,102 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - notícias de alto impacto detectadas
+2026-02-20 20:30:59,103 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,103 - __main__ - INFO - \u26a0\ufe0f  Evitando EURGBP - notícias de alto impacto detectadas
+2026-02-20 20:30:59,103 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,106 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,106 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,107 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,107 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,107 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,107 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,107 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,107 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - notícias de alto impacto detectadas
+2026-02-20 20:30:59,108 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,108 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,108 - __main__ - INFO - \u26a0\ufe0f  Evitando XPTUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,108 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,108 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,108 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - notícias de alto impacto detectadas
+2026-02-20 20:30:59,109 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,109 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,109 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,109 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,109 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,109 - __main__ - INFO - \u26a0\ufe0f  Evitando XAUUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,109 - __main__ - INFO - \u26a0\ufe0f  Evitando EURGBP - notícias de alto impacto detectadas
+2026-02-20 20:30:59,109 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,109 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,109 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,109 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,110 - __main__ - INFO - \u26a0\ufe0f  Evitando EURGBP - notícias de alto impacto detectadas
+2026-02-20 20:30:59,110 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,110 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - notícias de alto impacto detectadas
+2026-02-20 20:30:59,110 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,110 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,110 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - notícias de alto impacto detectadas
+2026-02-20 20:30:59,110 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDNZD - notícias de alto impacto detectadas
+2026-02-20 20:30:59,110 - __main__ - INFO - \U0001f4ca Análise completa gerada com sucesso!
+2026-02-20 20:30:59,112 - __main__ - INFO - \u2705 Análise salva em: daily_selected_pairs.json
+2026-02-20 20:30:59,115 - __main__ - INFO - \u2705 Lista simplificada salva em: simple_pairs_list.json
+2026-02-20 20:30:59,116 - __main__ - INFO - \u2705 Análise diária concluída com sucesso!
+2026-02-20 20:30:59,116 - __main__ - INFO - \U0001f4cb O robô XP3 PRO agora usará os pares selecionados para operação
+
+2026-02-20 20:30:59,163 - __main__ - INFO - ✅ Análise diária concluída com sucesso!
+2026-02-20 20:32:08,090 - __main__ - INFO - 🚀 Iniciando análise diária...
+2026-02-20 20:32:08,488 - __main__ - INFO - 📊 Saída da análise:
+
+============================================================
+🧠 ANÁLISE DIÁRIA XP3 PRO v5.0
+============================================================
+📅 Data: 2026-02-20T20:32:08.393356
+🌍 Sessão: New York
+💡 Sentimento: Neutral
+
+🎯 PARES SELECIONADOS PARA HOJE (6):
+------------------------------------------------------------
+1. AUDJPY | Bullish | Score: 79.2 | ATR: 163.1 pips
+   💪 Força Relativa: 12.2 | Base: 6.5 | Quote: -5.6
+   📋 Motivo: Trend Score: 79.2 | Direction: Bullish
+
+2. AUDUSD | Bullish | Score: 76.9 | ATR: 132.3 pips
+   💪 Força Relativa: 12.6 | Base: 6.5 | Quote: -6.1
+   📋 Motivo: Trend Score: 76.9 | Direction: Bullish
+
+3. AUDNZD | Bullish | Score: 74.5 | ATR: 172.1 pips
+   💪 Força Relativa: 12.1 | Base: 6.5 | Quote: -5.6
+   📋 Motivo: Trend Score: 74.5 | Direction: Bullish
+
+4. EURAUD | Bearish | Score: 72.5 | ATR: 172.7 pips
+   💪 Força Relativa: 12.9 | Base: -6.4 | Quote: 6.5
+   📋 Motivo: Trend Score: 72.5 | Direction: Bearish
+
+5. GBPAUD | Bearish | Score: 71.9 | ATR: 134.6 pips
+   💪 Força Relativa: 12.1 | Base: -5.6 | Quote: 6.5
+   📋 Motivo: Trend Score: 71.9 | Direction: Bearish
+
+6. XAGUSD | Bullish | Score: 45.7 | ATR: 168.4 pips
+   💪 Força Relativa: 6.1 | Base: 0 | Quote: -6.1
+   📋 Motivo: Trend Score: 45.7 | Direction: Bullish
+
+============================================================
+📊 Total analisado: 23 pares
+🚫 Evitados por notícias: 3 pares
+============================================================
+
+2026-02-20 20:32:08,504 - __main__ - INFO - ✅ Análise diária concluída com sucesso!
+2026-02-20 20:32:39,054 - __main__ - INFO - 🚀 Iniciando análise diária...
+2026-02-20 20:32:39,209 - __main__ - INFO - 📊 Saída da análise:
+
+============================================================
+🧠 ANÁLISE DIÁRIA XP3 PRO v5.0
+============================================================
+📅 Data: 2026-02-20T20:32:39.170646
+🌍 Sessão: New York
+💡 Sentimento: Volatile
+
+🎯 PARES SELECIONADOS PARA HOJE (6):
+------------------------------------------------------------
+1. GBPUSD | Bullish | Score: 88.3 | ATR: 94.7 pips
+   💪 Força Relativa: 14.2 | Base: 7.6 | Quote: -6.6
+   📋 Motivo: Trend Score: 88.3 | Direction: Bullish
+
+2. EURCHF | Bearish | Score: 72.0 | ATR: 155.5 pips
+   💪 Força Relativa: 12.8 | Base: -6.9 | Quote: 5.9
+   📋 Motivo: Trend Score: 72.0 | Direction: Bearish
+
+3. USDJPY | Bearish | Score: 70.7 | ATR: 163.9 pips
+   💪 Força Relativa: 12.3 | Base: -6.6 | Quote: 5.7
+   📋 Motivo: Trend Score: 70.7 | Direction: Bearish
+
+4. EURJPY | Bearish | Score: 65.9 | ATR: 152.1 pips
+   💪 Força Relativa: 12.6 | Base: -6.9 | Quote: 5.7
+   📋 Motivo: Trend Score: 65.9 | Direction: Bearish
+
+5. GBPAUD | Bullish | Score: 55.1 | ATR: 106.5 pips
+   💪 Força Relativa: 9.4 | Base: 7.6 | Quote: -1.8
+   📋 Motivo: Trend Score: 55.1 | Direction: Bullish
+
+6. XPDUSD | Bullish | Score: 50.3 | ATR: 88.2 pips
+   💪 Força Relativa: 6.6 | Base: 0 | Quote: -6.6
+   📋 Motivo: Trend Score: 50.3 | Direction: Bullish
+
+============================================================
+📊 Total analisado: 23 pares
+🚫 Evitados por notícias: 3 pares
+============================================================
+
+2026-02-20 20:32:39,210 - __main__ - INFO - ✅ Análise diária concluída com sucesso!
+2026-02-20 20:33:57,534 - __main__ - INFO - 🚀 Iniciando análise diária...
+2026-02-20 20:33:59,236 - __main__ - INFO - 📊 Saída da análise:
+
+============================================================
+🧠 ANÁLISE DIÁRIA XP3 PRO v5.0
+============================================================
+📅 Data: 2026-02-20T20:33:58.244721
+🌍 Sessão: New York
+💡 Sentimento: Neutral
+
+🎯 PARES SELECIONADOS PARA HOJE (2):
+------------------------------------------------------------
+1. EURCHF | Bearish | Score: 61.6 | ATR: 60.8 pips
+   💪 Força Relativa: 8.8 | Base: -3.7 | Quote: 5.1
+   📋 Motivo: Trend Score: 61.6 | Direction: Bearish
+
+2. CHFJPY | Bullish | Score: 53.7 | ATR: 195.4 pips
+   💪 Força Relativa: 9.5 | Base: 5.1 | Quote: -4.4
+   📋 Motivo: Trend Score: 53.7 | Direction: Bullish
+
+============================================================
+📊 Total analisado: 23 pares
+🚫 Evitados por notícias: 11 pares
+============================================================
+
+2026-02-20 20:33:59,342 - __main__ - ERROR - ⚠️ Erros da análise:
+2026-02-20 20:33:58,223 - __main__ - INFO - \U0001f680 Iniciando Analisador Di�rio XP3 PRO v5.0
+2026-02-20 20:33:58,226 - __main__ - INFO - \U0001f680 Iniciando an�lise di�ria XP3 PRO v5.0
+2026-02-20 20:33:58,237 - __main__ - INFO - \U0001f4c5 Data: 2026-02-20 20:33:58
+2026-02-20 20:33:58,238 - __main__ - INFO - \U0001f50d Iniciando an�lise di�ria de mercado...
+2026-02-20 20:33:58,238 - __main__ - INFO - \U0001f4ca Analisando sentimento de mercado...
+2026-02-20 20:33:58,239 - __main__ - INFO - \U0001f4a1 Sentimento detectado: Risk-On
+2026-02-20 20:33:58,239 - __main__ - INFO - \U0001f4aa Analisando for�a relativa das moedas...
+2026-02-20 20:33:58,240 - __main__ - INFO - \U0001f4f0 Verificando not�cias de alto impacto...
+2026-02-20 20:33:58,240 - __main__ - INFO - \u26a0\ufe0f  Evitando XPTUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,241 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,241 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDNZD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,242 - __main__ - INFO - \U0001f4c8 Analisando for�a de tend�ncia dos pares...
+2026-02-20 20:33:58,244 - __main__ - INFO - \u2705 Selecionados 2 pares para opera��o
+2026-02-20 20:33:58,244 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,258 - __main__ - INFO - \u26a0\ufe0f  Evitando XAUUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,260 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,263 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,265 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,265 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,266 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,266 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,266 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,266 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,267 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,267 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,267 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDNZD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,267 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,268 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,268 - __main__ - INFO - \u26a0\ufe0f  Evitando XAUUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,268 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,268 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,268 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,269 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,269 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,269 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,269 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,449 - __main__ - INFO - \u26a0\ufe0f  Evitando XPTUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,450 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,450 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,450 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,450 - __main__ - INFO - \u26a0\ufe0f  Evitando XPTUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,450 - __main__ - INFO - \u26a0\ufe0f  Evitando EURGBP - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,450 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,451 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,451 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,451 - __main__ - INFO - \u26a0\ufe0f  Evitando XPTUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,451 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,451 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,451 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,452 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,452 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,452 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,452 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,452 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,452 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,453 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,453 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,453 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,453 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,453 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,453 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,453 - __main__ - INFO - \u26a0\ufe0f  Evitando EURGBP - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,454 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,454 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,454 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,454 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,454 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,455 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,455 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,455 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,455 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,455 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,455 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,455 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDNZD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,456 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,456 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,456 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,456 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,456 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,456 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,457 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,457 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,457 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,457 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,457 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,457 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,458 - __main__ - INFO - \u26a0\ufe0f  Evitando XAUUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,458 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,458 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,458 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,459 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,459 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,459 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,460 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,460 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,461 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,461 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,464 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,466 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,466 - __main__ - INFO - \u26a0\ufe0f  Evitando EURGBP - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,466 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDNZD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,467 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,468 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,468 - __main__ - INFO - \u26a0\ufe0f  Evitando XPTUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,468 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,469 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,469 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,469 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,469 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,469 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,469 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,470 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,470 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,470 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,470 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,470 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,470 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,471 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,471 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,471 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,471 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - not�cias de alto impacto detectadas
+2026-02-20 20:33:58,471 - __main__ - INFO - \U0001f4ca An�lise completa gerada com sucesso!
+2026-02-20 20:33:58,476 - __main__ - INFO - \u2705 An�lise salva em: daily_selected_pairs.json
+2026-02-20 20:33:58,481 - __main__ - INFO - \u2705 Lista simplificada salva em: simple_pairs_list.json
+2026-02-20 20:33:58,482 - __main__ - INFO - \u2705 An�lise di�ria conclu�da com sucesso!
+2026-02-20 20:33:58,482 - __main__ - INFO - \U0001f4cb O rob� XP3 PRO agora usar� os pares selecionados para opera��o
+
+2026-02-20 20:33:59,487 - __main__ - INFO - ✅ Análise diária concluída com sucesso!
+2026-02-20 20:34:33,130 - __main__ - INFO - 🚀 Iniciando análise diária...
+2026-02-20 20:34:33,277 - __main__ - INFO - 📊 Saída da análise:
+
+============================================================
+🧠 ANÁLISE DIÁRIA XP3 PRO v5.0
+============================================================
+📅 Data: 2026-02-20T20:34:33.250499
+🌍 Sessão: New York
+💡 Sentimento: Trending
+
+🎯 PARES SELECIONADOS PARA HOJE (6):
+------------------------------------------------------------
+1. USDJPY | Bearish | Score: 88.3 | ATR: 56.0 pips
+   💪 Força Relativa: 15.4 | Base: -7.7 | Quote: 7.7
+   📋 Motivo: Trend Score: 88.3 | Direction: Bearish
+
+2. XAUUSD | Bullish | Score: 55.8 | ATR: 152.3 pips
+   💪 Força Relativa: 7.7 | Base: 0 | Quote: -7.7
+   📋 Motivo: Trend Score: 55.8 | Direction: Bullish
+
+3. XPDUSD | Bullish | Score: 55.6 | ATR: 84.9 pips
+   💪 Força Relativa: 7.7 | Base: 0 | Quote: -7.7
+   📋 Motivo: Trend Score: 55.6 | Direction: Bullish
+
+4. GBPCHF | Bullish | Score: 54.2 | ATR: 123.4 pips
+   💪 Força Relativa: 8.5 | Base: 7.9 | Quote: -0.6
+   📋 Motivo: Trend Score: 54.2 | Direction: Bullish
+
+5. CHFJPY | Bearish | Score: 49.4 | ATR: 146.4 pips
+   💪 Força Relativa: 8.3 | Base: -0.6 | Quote: 7.7
+   📋 Motivo: Trend Score: 49.4 | Direction: Bearish
+
+6. USDCHF | Bearish | Score: 48.9 | ATR: 192.7 pips
+   💪 Força Relativa: 7.1 | Base: -7.7 | Quote: -0.6
+   📋 Motivo: Trend Score: 48.9 | Direction: Bearish
+
+============================================================
+📊 Total analisado: 23 pares
+🚫 Evitados por notícias: 4 pares
+============================================================
+
+2026-02-20 20:34:33,277 - __main__ - ERROR - ⚠️ Erros da análise:
+2026-02-20 20:34:33,247 - __main__ - INFO - \U0001f680 Iniciando Analisador Di�rio XP3 PRO v5.0
+2026-02-20 20:34:33,248 - __main__ - INFO - \U0001f680 Iniciando an�lise di�ria XP3 PRO v5.0
+2026-02-20 20:34:33,248 - __main__ - INFO - \U0001f4c5 Data: 2026-02-20 20:34:33
+2026-02-20 20:34:33,249 - __main__ - INFO - \U0001f50d Iniciando an�lise di�ria de mercado...
+2026-02-20 20:34:33,249 - __main__ - INFO - \U0001f4ca Analisando sentimento de mercado...
+2026-02-20 20:34:33,249 - __main__ - INFO - \U0001f4a1 Sentimento detectado: Neutral
+2026-02-20 20:34:33,249 - __main__ - INFO - \U0001f4aa Analisando for�a relativa das moedas...
+2026-02-20 20:34:33,249 - __main__ - INFO - \U0001f4f0 Verificando not�cias de alto impacto...
+2026-02-20 20:34:33,249 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,249 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,249 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,249 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,249 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,250 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,250 - __main__ - INFO - \U0001f4c8 Analisando for�a de tend�ncia dos pares...
+2026-02-20 20:34:33,250 - __main__ - INFO - \u2705 Selecionados 6 pares para opera��o
+2026-02-20 20:34:33,250 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,250 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,250 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,250 - __main__ - INFO - \u26a0\ufe0f  Evitando XPTUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,250 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,250 - __main__ - INFO - \u26a0\ufe0f  Evitando EURGBP - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,251 - __main__ - INFO - \u26a0\ufe0f  Evitando XAUUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,252 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,252 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,252 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,252 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,252 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,252 - __main__ - INFO - \u26a0\ufe0f  Evitando XAUUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,252 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,252 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,252 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,252 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,252 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,252 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,252 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando EURGBP - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando XPTUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,253 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando XPTUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,254 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,255 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,255 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,255 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,255 - __main__ - INFO - \u26a0\ufe0f  Evitando XAGUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,255 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,255 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDNZD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,255 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,255 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,256 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,256 - __main__ - INFO - \u26a0\ufe0f  Evitando XPTUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,256 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,256 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,256 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,256 - __main__ - INFO - \u26a0\ufe0f  Evitando EURAUD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,256 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,256 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,256 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,257 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,257 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,257 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,257 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,257 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,257 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDNZD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando XAUUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando CHFJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando XPDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando EURGBP - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,258 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPAUD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando USDJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando EURGBP - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando EURGBP - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando EURJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,259 - __main__ - INFO - \u26a0\ufe0f  Evitando EURUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,260 - __main__ - INFO - \u26a0\ufe0f  Evitando XAUUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,260 - __main__ - INFO - \u26a0\ufe0f  Evitando GBPJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,260 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,260 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCHF - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,260 - __main__ - INFO - \u26a0\ufe0f  Evitando USDCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,260 - __main__ - INFO - \u26a0\ufe0f  Evitando CADJPY - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,260 - __main__ - INFO - \u26a0\ufe0f  Evitando NZDUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,260 - __main__ - INFO - \u26a0\ufe0f  Evitando XAUUSD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,260 - __main__ - INFO - \u26a0\ufe0f  Evitando AUDNZD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,260 - __main__ - INFO - \u26a0\ufe0f  Evitando EURCAD - not�cias de alto impacto detectadas
+2026-02-20 20:34:33,260 - __main__ - INFO - \U0001f4ca An�lise completa gerada com sucesso!
+2026-02-20 20:34:33,262 - __main__ - INFO - \u2705 An�lise salva em: daily_selected_pairs.json
+2026-02-20 20:34:33,264 - __main__ - INFO - \u2705 Lista simplificada salva em: simple_pairs_list.json
+2026-02-20 20:34:33,264 - __main__ - INFO - \u2705 An�lise di�ria conclu�da com sucesso!
+2026-02-20 20:34:33,264 - __main__ - INFO - \U0001f4cb O rob� XP3 PRO agora usar� os pares selecionados para opera��o
+
+2026-02-20 20:34:33,278 - __main__ - INFO - ✅ Análise diária concluída com sucesso!
+2026-02-20 21:04:17,380 - __main__ - INFO - [2026-02-20 21:04:17] enabled=True lock=OFF next=22:00 T-55:42
+2026-02-20 21:05:17,386 - __main__ - INFO - [2026-02-20 21:05:17] enabled=True lock=OFF next=22:00 T-54:42
+2026-02-20 21:06:17,394 - __main__ - INFO - [2026-02-20 21:06:17] enabled=True lock=OFF next=22:00 T-53:42
+2026-02-20 21:07:17,396 - __main__ - INFO - [2026-02-20 21:07:17] enabled=True lock=OFF next=22:00 T-52:42
+2026-02-20 21:08:17,398 - __main__ - INFO - [2026-02-20 21:08:17] enabled=True lock=OFF next=22:00 T-51:42
+2026-02-20 21:09:17,410 - __main__ - INFO - [2026-02-20 21:09:17] enabled=True lock=OFF next=22:00 T-50:42
+2026-02-20 21:10:17,413 - __main__ - INFO - [2026-02-20 21:10:17] enabled=True lock=OFF next=22:00 T-49:42
+2026-02-20 21:11:17,420 - __main__ - INFO - [2026-02-20 21:11:17] enabled=True lock=OFF next=22:00 T-48:42
+2026-02-20 22:00:03,402 - __main__ - INFO - 🚀 Iniciando análise diária...
+2026-02-20 22:00:03,881 - __main__ - INFO - 📊 Saída da análise:
+
+============================================================
+🧠 ANÁLISE DIÁRIA XP3 PRO v5.0
+============================================================
+📅 Data: 2026-02-20T22:00:03.848310
+🌍 Sessão: Sydney/Tokyo
+💡 Sentimento: Trending
+
+🎯 PARES SELECIONADOS PARA HOJE (3):
+------------------------------------------------------------
+1. USDCAD | Bearish | Score: 63.2 | ATR: 187.5 pips
+   💪 Força Relativa: 8.7 | Base: -1.7 | Quote: 7.0
+   📋 Motivo: Trend Score: 63.2 | Direction: Bearish
+
+2. CADJPY | Bullish | Score: 57.3 | ATR: 69.4 pips
+   💪 Força Relativa: 8.2 | Base: 7.0 | Quote: -1.2
+   📋 Motivo: Trend Score: 57.3 | Direction: Bullish
+
+3. EURCAD | Bearish | Score: 50.4 | ATR: 138.7 pips
+   💪 Força Relativa: 9.3 | Base: -2.2 | Quote: 7.0
+   📋 Motivo: Trend Score: 50.4 | Direction: Bearish
+
+============================================================
+📊 Total analisado: 23 pares
+🚫 Evitados por notícias: 0 pares
+============================================================
+
+2026-02-20 22:00:03,882 - __main__ - ERROR - ⚠️ Erros da análise:
+2026-02-20 22:00:03,840 - __main__ - INFO - \U0001f680 Iniciando Analisador Di�rio XP3 PRO v5.0
+2026-02-20 22:00:03,846 - __main__ - INFO - \U0001f680 Iniciando an�lise di�ria XP3 PRO v5.0
+2026-02-20 22:00:03,846 - __main__ - INFO - \U0001f4c5 Data: 2026-02-20 22:00:03
+2026-02-20 22:00:03,846 - __main__ - INFO - \U0001f50d Iniciando an�lise di�ria de mercado...
+2026-02-20 22:00:03,847 - __main__ - INFO - \U0001f4ca Analisando sentimento de mercado...
+2026-02-20 22:00:03,847 - __main__ - INFO - \U0001f4a1 Sentimento detectado: Neutral
+2026-02-20 22:00:03,847 - __main__ - INFO - \U0001f4aa Analisando for�a relativa das moedas...
+2026-02-20 22:00:03,847 - __main__ - INFO - \U0001f4c8 Analisando for�a de tend�ncia dos pares...
+2026-02-20 22:00:03,848 - __main__ - INFO - \u2705 Selecionados 3 pares para opera��o
+2026-02-20 22:00:03,848 - __main__ - INFO - \U0001f4ca An�lise completa gerada com sucesso!
+2026-02-20 22:00:03,851 - __main__ - INFO - \u2705 An�lise salva em: daily_selected_pairs.json
+2026-02-20 22:00:03,854 - __main__ - INFO - \u2705 Lista simplificada salva em: simple_pairs_list.json
+2026-02-20 22:00:03,855 - __main__ - INFO - \u2705 An�lise di�ria conclu�da com sucesso!
+2026-02-20 22:00:03,855 - __main__ - INFO - \U0001f4cb O rob� XP3 PRO agora usar� os pares selecionados para opera��o
+
+2026-02-20 22:00:03,882 - __main__ - INFO - ✅ Análise diária concluída com sucesso!

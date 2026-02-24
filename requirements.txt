@@ -1,0 +1,54 @@
+# XP3 PRO FOREX BOT - Python Dependencies
+# Python 3.8+ required
+
+# Core Trading
+MetaTrader5==5.0.45
+pandas==2.1.4
+numpy==1.24.3
+
+# Technical Analysis
+ta-lib==0.4.28  # Opcional, se tiver TA-Lib instalado
+scipy==1.11.4
+
+# Machine Learning
+scikit-learn==1.3.2
+numba==0.58.1  # Para otimização de performance
+
+# Telegram
+pyTelegramBotAPI==4.14.0
+requests==2.31.0
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3.post1
+
+# Data Processing
+openpyxl==3.1.2  # Para Excel (opcional)
+
+# Performance Monitoring
+psutil==5.9.6  # Monitoramento de sistema
+
+# Logging
+colorlog==6.8.0  # Logs coloridos (opcional)
+python-json-logger==2.0.7  # Logging estruturado em JSON
+
+# Development (opcional)
+pytest==7.4.3
+pytest-cov==4.1.0
+black==23.12.1
+flake8==6.1.0
+
+# Backtest (para otimizador)
+optuna==3.5.0  # Otimização de hiperparâmetros
+ray==2.9.0     # Paralelismo institucional
+matplotlib==3.8.2  # Gráficos (opcional)
+seaborn==0.13.0  # Visualizações (opcional)
+
+# Database (se quiser persistir em SQL)
+# sqlalchemy==2.0.23
+# pymongo==4.6.1  # MongoDB
+
+# API/Web (para dashboard futuro)
+# flask==3.0.0
+# flask-cors==4.0.0
+# flask-socketio==5.3.5
