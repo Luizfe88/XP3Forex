@@ -16,7 +16,6 @@ requests==2.31.0
 
 # Database
 sqlalchemy==2.0.23
-sqlite3
 
 # Web Dashboard
 flask==3.0.0
@@ -33,6 +32,7 @@ colorama==0.4.6
 tqdm==4.66.1
 schedule==1.2.0
 pyyaml==6.0.1
+numba==0.58.1
 
 # Security
 cryptography==41.0.8

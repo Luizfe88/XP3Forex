@@ -22,19 +22,23 @@
 ```
 xp3-forex/
 ├── src/
-│   └── xp3_forex/
-│       ├── core/           # Core functionality
-│       ├── strategies/     # Trading strategies
-│       ├── indicators/     # Technical indicators
-│       ├── risk/          # Risk management
-│       ├── data/          # Data handling
-│       ├── utils/         # Utilities
-│       └── ml/            # Machine learning
+│   ├── xp3_forex/         # Main package
+│   │   ├── core/          # Core functionality (bot, config)
+│   │   ├── utils/         # Utilities (MT5, indicators, calculations)
+│   │   ├── strategies/    # Trading strategies
+│   │   ├── indicators/    # Technical indicators
+│   │   ├── risk/          # Risk management
+│   │   ├── data/          # Data handling
+│   │   └── ml/            # Machine learning
+│   ├── run_bot.py         # Main bot execution script
+│   └── monitor.py         # Real-time monitoring
 ├── tests/                 # Test suite
 ├── docs/                  # Documentation
 ├── config/                # Configuration files
-├── scripts/               # Utility scripts
-└── logs/                  # Log files
+├── logs/                  # Log files
+├── data/                  # Data storage
+├── backups/               # Backup files
+└── reports/               # Trading reports
 ```
 
 ## 🚀 Instalação
@@ -61,9 +65,11 @@ venv\Scripts\activate  # Windows
 # Instale as dependências
 pip install -r requirements.txt
 
-# Configure o bot
-cp config/config_template.json config/config.json
-# Edite config.json com suas credenciais
+# Configure o bot (executa setup automático)
+python setup.py
+
+# Configure suas credenciais
+# Edite config/config.json com suas credenciais MT5
 ```
 
 ## ⚙️ Configuração
@@ -117,30 +123,79 @@ source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate  # Windows
 
 # Inicie o bot
-python src/xp3_forex/bot_forex.py
+python src/run_bot.py
+
+# Ou use os scripts de execução
+python run_bot.py  # Windows
+./run_bot.sh       # Linux/Mac
 ```
 
-### Dashboard Web
+### Monitoramento em Tempo Real
 
 ```bash
-# Inicie o dashboard
-python scripts/dashboard.py
+# Monitor simples com sinais e vetos
+python src/monitor.py
+
+# Monitor com cores e indicadores técnicos
+python src/monitor.py --log-file logs/xp3_forex.log
+```
+
+### Dashboard Web (Em Breve)
+
+```bash
+# Inicie o dashboard (funcionalidade em desenvolvimento)
+# python src/dashboard.py
 ```
 
 Acesse: http://localhost:8080
-
-### Monitoramento
-
-```bash
-# Monitor em tempo real
-python scripts/monitor.py
-```
 
 ## 📊 Estratégias
 
 ### Estratégia XP3 v4.2
 
 - **Tipo**: Trend Following + Mean Reversion
+- **Indicadores**: ADX, RSI, EMA, ATR
+- **Timeframes**: 15M, 1H, 4H
+- **Gestão de Risco**: SL/TP baseado em ATR
+
+## 🔄 Migração para Nova Estrutura
+
+O projeto foi reestruturado para seguir padrões profissionais de desenvolvimento Python:
+
+### ✅ O que mudou:
+- **Nova estrutura src-layout**: Código principal em `src/xp3_forex/`
+- **Módulos organizados**: Core, utils, indicators, calculations separados
+- **Configuração centralizada**: Todas as configurações em `src/xp3_forex/core/config.py`
+- **Logging profissional**: Rotação automática de logs (máx 50MB)
+- **Monitor aprimorado**: Exibe sinais, vetos e indicadores técnicos em tempo real
+
+### 📁 Arquivos principais:
+```
+src/
+├── xp3_forex/
+│   ├── core/
+│   │   ├── config.py      # Configurações centralizadas
+│   │   └── bot.py         # Bot principal
+│   └── utils/
+│       ├── mt5_utils.py   # Funções MT5
+│       ├── indicators.py  # Indicadores técnicos
+│       ├── calculations.py # Cálculos de trading
+│       └── data_utils.py  # Utilitários de dados
+├── run_bot.py             # Script principal
+└── monitor.py             # Monitor em tempo real
+```
+
+### 🚀 Como usar a nova estrutura:
+```bash
+# Executar o bot
+python src/run_bot.py
+
+# Monitorar em tempo real
+python src/monitor.py
+
+# Setup automático
+python setup.py
+```
 - **Timeframes**: M15, H1, H4
 - **Indicadores**: ADX, RSI, EMA, ATR
 - **ML**: Random Forest para previsão de tendência
