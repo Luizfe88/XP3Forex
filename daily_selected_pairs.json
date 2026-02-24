@@ -1,0 +1,65 @@
+{
+  "analysis_date": "2026-02-20T22:00:03.848310",
+  "market_session": "Sydney/Tokyo",
+  "selected_pairs": [
+    {
+      "pair": "USDCAD",
+      "trend_direction": "Bearish",
+      "trend_score": 63.2,
+      "atr_pips": 187.5,
+      "relative_strength": 8.7,
+      "base_strength": -1.7,
+      "quote_strength": 7.0,
+      "analysis_date": "2026-02-20T22:00:03.848090",
+      "market_sentiment": "Neutral",
+      "selection_reason": "Trend Score: 63.2 | Direction: Bearish"
+    },
+    {
+      "pair": "CADJPY",
+      "trend_direction": "Bullish",
+      "trend_score": 57.3,
+      "atr_pips": 69.4,
+      "relative_strength": 8.2,
+      "base_strength": 7.0,
+      "quote_strength": -1.2,
+      "analysis_date": "2026-02-20T22:00:03.848107",
+      "market_sentiment": "Neutral",
+      "selection_reason": "Trend Score: 57.3 | Direction: Bullish"
+    },
+    {
+      "pair": "EURCAD",
+      "trend_direction": "Bearish",
+      "trend_score": 50.4,
+      "atr_pips": 138.7,
+      "relative_strength": 9.3,
+      "base_strength": -2.2,
+      "quote_strength": 7.0,
+      "analysis_date": "2026-02-20T22:00:03.848115",
+      "market_sentiment": "Neutral",
+      "selection_reason": "Trend Score: 50.4 | Direction: Bearish"
+    }
+  ],
+  "market_sentiment": {
+    "sentiment": "Trending",
+    "vix_level": 16.780625549764384,
+    "dxy_strength": 106.70843802041745,
+    "gold_trend": "Bearish",
+    "oil_trend": "Bullish"
+  },
+  "currency_strength": {
+    "USD": 3.537198533306606,
+    "EUR": 3.1647603653597454,
+    "GBP": 0.329330593669658,
+    "JPY": 4.686950806183262,
+    "CHF": 7.441902838248993,
+    "AUD": 7.3354596216627375,
+    "CAD": -2.1739042827405903,
+    "NZD": -0.4930113895898387
+  },
+  "analysis_metadata": {
+    "total_pairs_analyzed": 23,
+    "pairs_avoided_due_news": 0,
+    "selection_criteria": "Trend Following with minimum trend score of 40 (ADX + EMAs)",
+    "risk_filter": "News filtering handled by real-time news_filter.py during trading"
+  }
+}

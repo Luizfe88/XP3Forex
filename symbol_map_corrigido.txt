@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 SYMBOL_MAP = {
     "FOREX_MAJORS": [
         "AUDUSD",
@@ -55,3 +56,62 @@ SYMBOL_MAP = {
         "USDZAR",
     ],
 }
+=======
+SYMBOL_MAP = {
+    "FOREX_MAJORS": [
+        "AUDUSD",
+        "EURUSD",
+        "GBPUSD",
+        "NZDUSD",
+        "USDCAD",
+        "USDCHF",
+        "USDJPY",
+    ],
+    "FOREX_CROSSES": [
+        "AUDJPY",
+        "CADJPY",
+        "EURAUD",
+        "EURGBP",
+        "EURJPY",
+        "GBPAUD",
+        "GBPJPY",
+    ],
+    "METALS": [
+        "XAGAUD",
+        "XAGEUR",
+        "XAGUSD",
+        "XAUAUD",
+        "XAUCHF",
+        "XAUEUR",
+        "XAUGBP",
+        "XAUJPY",
+        "XAUUSD",
+    ],
+    "CRYPTO": [
+        "ABNB.NAS",
+        "ABTC.NAS",
+        "ADAG.NAS",
+        "ADAM.NAS",
+        "ADAUSD",
+        "BNBUSD",
+        "BTCUSD",
+        "ETHUSD",
+        "NETH25",
+        "SOLUSD",
+    ],
+    "INDICES": [
+        "GERN.NAS",
+        "UK100",
+        "US30",
+    ],
+    "EXOTICS": [
+        "CBRL.NAS",
+        "EURTRY",
+        "EURZAR",
+        "GBPTRY",
+        "USDMXN",
+        "USDTRY",
+        "USDZAR",
+    ],
+}
+>>>>>>> c2c8056f6002bf0f9e0ecc822dfde8a088dc2bcd

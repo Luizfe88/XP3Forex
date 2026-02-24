@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
   "timestamp": 1767728739.6769345,
   "paused": false,
@@ -25,4 +26,33 @@
     "win_rate": 0.0,
     "profit_factor": 0.0
   }
+=======
+{
+  "timestamp": 1767728739.6769345,
+  "paused": false,
+  "pause_reason": "",
+  "top_pairs": [
+    "USDCHF",
+    "USDCAD",
+    "AUDJPY",
+    "GBPCHF",
+    "CHFJPY",
+    "XAGUSD",
+    "USDJPY",
+    "USDMXN",
+    "XAUUSD",
+    "EURUSD"
+  ],
+  "account": {
+    "balance": 982357.41,
+    "equity": 982357.41,
+    "profit": 0.0
+  },
+  "positions_count": 0,
+  "metrics": {
+    "total_trades": 0,
+    "win_rate": 0.0,
+    "profit_factor": 0.0
+  }
+>>>>>>> c2c8056f6002bf0f9e0ecc822dfde8a088dc2bcd
 }

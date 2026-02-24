@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "xp3_forex"
+version = "0.1.0"
+description = "XP3 PRO FOREX - Trading bot institucional com ML, Optuna e MT5"
+authors = ["Luiz <you@example.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{ include = "xp3_forex", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+MetaTrader5 = "*"
+pandas = "*"
+numpy = "*"
+numba = "*"
+optuna = "*"
+scikit-learn = "*"
+python-dotenv = "*"
+pydantic = "*"
+pydantic-settings = "*"
+requests = "*"
+pytz = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+pre-commit = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

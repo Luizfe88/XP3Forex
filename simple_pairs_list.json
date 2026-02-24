@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [
   "USDCHF",
   "EURCHF",
@@ -5,4 +6,10 @@
   "EURAUD",
   "CHFJPY",
   "XPTUSD"
+=======
+[
+  "USDCAD",
+  "CADJPY",
+  "EURCAD"
+>>>>>>> c2c8056f6002bf0f9e0ecc822dfde8a088dc2bcd
 ]

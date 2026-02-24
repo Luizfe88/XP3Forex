@@ -65,11 +65,9 @@ venv\Scripts\activate  # Windows
 # Instale as dependências
 pip install -r requirements.txt
 
-# Configure o bot (executa setup automático)
-python setup.py
-
-# Configure suas credenciais
-# Edite config/config.json com suas credenciais MT5
+# Configuração via .env
+copy .env.example .env   # Windows
+# edite .env com suas credenciais MT5 e Telegram
 ```
 
 ## ⚙️ Configuração
@@ -138,6 +136,13 @@ python src/monitor.py
 
 # Monitor com cores e indicadores técnicos
 python src/monitor.py --log-file logs/xp3_forex.log
+```
+
+### Produção
+
+```bash
+# Configurações via .env
+python src/run_bot.py
 ```
 
 ### Dashboard Web (Em Breve)
@@ -209,6 +214,32 @@ python config_forex.py       # Redireciona para nova config
 ```
 
 **Nota**: A migração foi feita automaticamente. Os arquivos originais foram salvos com extensão `.backup`.
+
+## ⚙️ Configuração via .env
+
+Variáveis suportadas estão em `.env.example`. Exemplo:
+
+```
+MT5_LOGIN=12345678
+MT5_PASSWORD=your_password
+MT5_SERVER=YourBroker-Demo
+MT5_PATH=C:/Program Files/MetaTrader 5/terminal64.exe
+TELEGRAM_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+SYMBOLS=EURUSD,GBPUSD,USDJPY
+TIMEFRAMES=15,60,240
+RISK_PER_TRADE=0.02
+MAX_POSITIONS=5
+```
+
+## 🧪 Desenvolvimento
+
+`pyproject.toml` incluído (Poetry). Opcional:
+
+```bash
+pip install poetry
+poetry install
+```
 - **Timeframes**: M15, H1, H4
 - **Indicadores**: ADX, RSI, EMA, ATR
 - **ML**: Random Forest para previsão de tendência
