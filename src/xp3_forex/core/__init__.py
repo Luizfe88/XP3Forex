@@ -1,0 +1,1 @@
+"""Core functionality for XP3 PRO FOREX"""

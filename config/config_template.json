@@ -1,0 +1,61 @@
+{
+  "mt5": {
+    "login": 12345678,
+    "password": "your_mt5_password",
+    "server": "YourBroker-Demo",
+    "path": "C:/Program Files/MetaTrader 5/terminal64.exe"
+  },
+  "telegram": {
+    "token": "your_bot_token_from_botfather",
+    "chat_id": "your_chat_id",
+    "enabled": true
+  },
+  "trading": {
+    "symbols": ["EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD"],
+    "timeframes": [15, 60, 240],
+    "risk_per_trade": 0.02,
+    "max_positions": 5,
+    "lot_size_multiplier": 1.0,
+    "spread_filter": 2.0,
+    "slippage": 3
+  },
+  "strategies": {
+    "xp3_v4": {
+      "enabled": true,
+      "adx_threshold": 25,
+      "rsi_oversold": 30,
+      "rsi_overbought": 70,
+      "ema_fast": 20,
+      "ema_slow": 50,
+      "atr_multiplier": 2.0
+    }
+  },
+  "risk_management": {
+    "max_daily_loss": 0.05,
+    "max_weekly_loss": 0.10,
+    "max_monthly_loss": 0.15,
+    "stop_loss_multiplier": 2.0,
+    "take_profit_multiplier": 3.0,
+    "trailing_stop": true,
+    "trailing_distance": 1.5
+  },
+  "ml": {
+    "enabled": true,
+    "model_update_interval": 24,
+    "prediction_threshold": 0.65,
+    "features": ["adx", "rsi", "ema_diff", "atr", "volume_ratio"]
+  },
+  "logging": {
+    "level": "INFO",
+    "max_file_size_mb": 50,
+    "backup_count": 3,
+    "log_trades": true,
+    "log_signals": true
+  },
+  "optimization": {
+    "enabled": false,
+    "n_trials": 100,
+    "timeout": 3600,
+    "n_jobs": -1
+  }
+}
