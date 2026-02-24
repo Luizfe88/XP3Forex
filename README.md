@@ -196,6 +196,19 @@ python src/monitor.py
 # Setup automático
 python setup.py
 ```
+
+### 🔗 Compatibilidade com Scripts Legados
+
+Para manter compatibilidade com scripts antigos, foram criados wrappers automáticos:
+
+```bash
+# Scripts legados ainda funcionam (com migração automática)
+python bot_forex.py          # Usa wrapper automático
+python utils_forex.py        # Importa da nova estrutura
+python config_forex.py       # Redireciona para nova config
+```
+
+**Nota**: A migração foi feita automaticamente. Os arquivos originais foram salvos com extensão `.backup`.
 - **Timeframes**: M15, H1, H4
 - **Indicadores**: ADX, RSI, EMA, ATR
 - **ML**: Random Forest para previsão de tendência

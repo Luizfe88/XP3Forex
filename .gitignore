@@ -98,6 +98,7 @@ risk_engine.db
 .DS_Store
 Thumbs.db
 desktop.ini
+.tmp.driveupload/
 
 # RELATÓRIOS E ANÁLISES ==================================================
 ReportHistory*

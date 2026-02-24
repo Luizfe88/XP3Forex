@@ -13,6 +13,13 @@
 
 import sys
 import os
+from pathlib import Path
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+import sys
+import os
 import time
 import threading
 import logging
@@ -51,10 +58,10 @@ import numpy as np
 import pandas as pd
 
 try:
-    import config_forex as config
-    import utils_forex as utils
-    from validation_forex import validate_and_create_order_forex, OrderParams, OrderSide
-    from news_filter import news_filter
+    from xp3_forex.core import config as config
+    from xp3_forex.utils import mt5_utils, indicators, calculations, data_utils as utils
+    from xp3_forex.risk.validation import validate_and_create_order_forex, OrderParams, OrderSide
+    from xp3_forex.analysis.news_filter from xp3_forex.analysis import news_filter
     from daily_analysis_logger import daily_logger # ✅ Land Trading Standard
     try:
         from risk_engine import block_manager, profit_optimizer, adaptive_manager

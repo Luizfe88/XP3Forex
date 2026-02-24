@@ -6,13 +6,20 @@
 ✅ Filtro por importância e moeda
 """
 
+import sys
+import os
+from pathlib import Path
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
 import requests
 import json
 import time
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-import config_forex as config
+from xp3_forex.core import config as config
 
 logger = logging.getLogger("news_filter")
 

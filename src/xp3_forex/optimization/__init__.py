@@ -1,0 +1,1 @@
+"""Optimization module for XP3 PRO FOREX"""

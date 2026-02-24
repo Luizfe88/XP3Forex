@@ -1,4 +1,4 @@
-# utils_forex.py - XP3 PRO FOREX UTILS v4.2 INSTITUCIONAL
+# mt5_utils.py - XP3 PRO FOREX UTILS v4.2 INSTITUCIONAL
 """
 🚀 XP3 PRO FOREX UTILS - VERSÃO INSTITUCIONAL v4.2
 ✅ Funções auxiliares para o bot
@@ -9,6 +9,13 @@
 ✅ Suporte a SYMBOL_MAP (para ML Optimizer)
 ✅ Backtesting seguro
 """
+
+import sys
+import os
+from pathlib import Path
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 import MetaTrader5 as mt5
 import pandas as pd
@@ -27,7 +34,7 @@ import csv
 import sqlite3
 from typing import Optional, Tuple, Dict, Any, List
 
-import config_forex as config
+from xp3_forex.core import config as config
 from decimal import Decimal, ROUND_HALF_UP
 from numba import njit
 

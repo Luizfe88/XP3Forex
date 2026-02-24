@@ -8,14 +8,21 @@
 ✅ CORREÇÃO: Tratamento de AttributeError para mt5.symbol_info_tick
 """
 
+import sys
+import os
+from pathlib import Path
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
 import MetaTrader5 as mt5
 import logging
 from dataclasses import dataclass
 from enum import Enum
 from typing import Tuple
 
-import config_forex as config
-import utils_forex as utils
+from xp3_forex.core import config as config
+from xp3_forex.utils import mt5_utils, indicators, calculations, data_utils as utils
 import os
 import time
 from daily_analysis_logger import daily_logger
