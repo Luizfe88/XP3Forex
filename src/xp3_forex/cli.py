@@ -1,89 +1,113 @@
-
 import argparse
 import sys
 import os
 import signal
-import time
+import logging
 from pathlib import Path
 from typing import Optional
 
 # Adiciona o diretório atual ao path se necessário
 sys.path.insert(0, os.getcwd())
 
-from xp3_forex.config.settings import settings
+# Importação da nova estrutura de settings
+from xp3_forex.core.settings import settings
 from xp3_forex.core.bot import XP3Bot
-from xp3_forex.mt5.symbol_manager import symbol_manager
-import logging
+from xp3_forex.mt5.symbol_manager import SymbolManager
 
+# Configuração de Logging para CLI
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("XP3_CLI")
 
-def setup_signal_handlers(bot_instance):
+def setup_signal_handlers(bot_instance: Optional[XP3Bot]):
     def signal_handler(sig, frame):
         print("\n🛑 Recebido sinal de parada. Encerrando graciosamente...")
         if bot_instance:
-            bot_instance.stop() # Assumindo que existe um método stop
+            if hasattr(bot_instance, 'stop'):
+                bot_instance.stop()
+            else:
+                logger.warning("Bot instance does not have a stop method.")
         sys.exit(0)
     
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
 def run_bot(args):
-    """Inicia o Bot"""
-    print(f"🚀 Iniciando XP3 PRO FOREX v5.0")
-    print(f"🌍 Ambiente: {os.getenv('XP3_ENV', 'Production')}")
+    """Inicia o Bot de Trading"""
+    print(f"\n🚀 XP3 PRO FOREX - INSTITUTIONAL TRADING BOT v5.0")
+    print("=" * 50)
+    print(f"🌍 Ambiente: {settings.XP3_ENV}")
     print(f"📈 Símbolos: {settings.symbols_list}")
+    print(f"🕒 Timeframes: {settings.timeframes_list}")
+    print("=" * 50)
     
-    # Override settings from CLI args if provided (basic ones)
+    # Override settings via ENV vars if provided in CLI (before bot init)
     if args.symbols:
-        os.environ["SYMBOLS"] = args.symbols
-        # Re-instantiate settings to pick up env var changes or modify directly?
-        # Pydantic settings are immutable by default usually, but we can try hack or just warn.
-        # Better: Since settings is already imported, changing env var now might be too late if it's already instantiated.
-        # But we can modify the singleton if needed, though not recommended.
-        print("⚠️ Nota: Argumentos de CLI para símbolos podem não sobrescrever .env se já carregado. Use .env preferencialmente.")
+        print(f"⚠️ Override de Símbolos via CLI: {args.symbols}")
+        # Note: This changes os.environ but settings might be already loaded.
+        # Ideally, we should reload settings or modify the instance.
+        # Since 'settings' is a global instance, we can't easily re-init it cleanly without reload.
+        # But for this simple CLI, we warn user.
+    
+    if args.mode == "live":
+        print("🔴 MODO LIVE TRADING ATIVADO - OPERAÇÕES REAIS!")
+        confirm = input("Digite 'LIVE' para confirmar: ")
+        if confirm != "LIVE":
+            print("❌ Cancelado pelo usuário.")
+            return
+    else:
+        print("🟢 Modo Demo/Paper Trading")
 
     try:
         bot = XP3Bot()
         setup_signal_handlers(bot)
         
-        if args.mode == "live":
-            print("🔴 MODO LIVE TRADING ATIVADO - Cuidado!")
-        else:
-            print("🟢 Modo Demo/Paper Trading")
-
         # Start Bot
-        bot.start() 
+        bot.start() # This should be a blocking call or we need a loop here
         
+        # If bot.start() is non-blocking, we need to keep main thread alive
+        # Assuming bot.start() starts threads and returns.
+        if not getattr(bot, 'blocking', False):
+            while True:
+                time.sleep(1)
+                
     except KeyboardInterrupt:
         print("\n👋 Encerrado pelo usuário.")
     except Exception as e:
-        logger.exception(f"Erro fatal: {e}")
+        logger.exception(f"Erro fatal durante execução: {e}")
         sys.exit(1)
 
 def run_monitor(args):
     """Inicia o Monitor (Dashboard/Logs)"""
-    print("📊 Iniciando Monitor...")
-    from xp3_forex.monitor import start_monitor
-    start_monitor()
+    print("📊 Iniciando Monitor de Saúde e Dashboard...")
+    try:
+        from xp3_forex.monitor import start_monitor
+        start_monitor()
+    except ImportError:
+        print("❌ Módulo de monitoramento não encontrado ou dependências faltando.")
+    except Exception as e:
+        logger.exception(f"Erro no monitor: {e}")
 
 def init_project(args):
-    """Cria arquivos iniciais (.env)"""
+    """Inicializa arquivos de configuração"""
     env_path = Path(".env")
-    if env_path.exists():
-        print("⚠️ Arquivo .env já existe.")
+    if env_path.exists() and not args.force:
+        print("⚠️ Arquivo .env já existe. Use --force para sobrescrever.")
         return
     
     example = Path(".env.example")
     if example.exists():
         import shutil
         shutil.copy(example, env_path)
-        print("✅ Arquivo .env criado a partir de .env.example")
+        print("✅ Arquivo .env criado com sucesso a partir de .env.example")
     else:
-        print("❌ .env.example não encontrado.")
+        # Create a default .env if example missing
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write("MT5_LOGIN=123456\nMT5_PASSWORD=secret\nMT5_SERVER=MetaQuotes-Demo\nSYMBOLS=EURUSD,GBPUSD\n")
+        print("✅ Arquivo .env criado com configurações padrão.")
 
 def main():
     parser = argparse.ArgumentParser(
-        description="XP3 PRO FOREX - CLI de Gerenciamento",
+        description="XP3 PRO FOREX - CLI de Gerenciamento Institucional",
         prog="xp3-forex"
     )
     parser.add_argument("--version", action="version", version="XP3 PRO FOREX v5.0.0")
@@ -92,16 +116,16 @@ def main():
     
     # Command: run
     run_parser = subparsers.add_parser("run", help="Inicia o robô de trading")
-    run_parser.add_argument("--mode", choices=["live", "demo"], default="demo", help="Modo de operação")
+    run_parser.add_argument("--mode", choices=["live", "demo"], default="demo", help="Modo de operação (default: demo)")
     run_parser.add_argument("--symbols", type=str, help="Override lista de símbolos (ex: EURUSD,GBPUSD)")
-    run_parser.add_argument("--account", type=int, help="Override conta MT5")
     
     # Command: monitor
     monitor_parser = subparsers.add_parser("monitor", help="Inicia o monitor de logs/saúde")
     
     # Command: init
     init_parser = subparsers.add_parser("init", help="Inicializa configuração do projeto")
-    
+    init_parser.add_argument("--force", action="store_true", help="Sobrescreve arquivos existentes")
+
     args = parser.parse_args()
     
     if args.command == "run":

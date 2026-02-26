@@ -3,7 +3,7 @@
 import numpy as np
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Tuple, Optional, Dict, Any
-from ..core.config import ELITE_CONFIG, SYMBOL_MAP
+from ..core.settings import ELITE_CONFIG, SYMBOL_MAP
 
 def get_pip_size(symbol: str) -> float:
     """Obtém o tamanho do pip para o símbolo"""

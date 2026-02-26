@@ -1,4 +1,3 @@
-
 """
 XP3 PRO FOREX - Main Entry Point
 """

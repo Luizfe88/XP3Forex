@@ -35,7 +35,7 @@ import MetaTrader5 as mt5
 import numpy as np
 import pandas as pd
 
-from ..config.settings import settings
+from .settings import settings
 from ..utils.mt5_utils import *
 from ..utils.indicators import *
 from ..utils.calculations import *

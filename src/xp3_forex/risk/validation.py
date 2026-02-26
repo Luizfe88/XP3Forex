@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Tuple
 
-from xp3_forex.core import config
+from xp3_forex.core.settings import settings
 from xp3_forex.utils import mt5_utils
 from xp3_forex.utils import calculations
 from xp3_forex.utils.data_utils import daily_logger
@@ -100,7 +100,7 @@ def validate_and_create_order_forex(params: OrderParams) -> Tuple[bool, str, int
             "price": params.entry_price,
             "sl": params.sl,
             "tp": params.tp,
-            "deviation": getattr(config, 'MAX_DEVIATION', 20),
+            "deviation": settings.MAX_SLIPPAGE,
             "magic": params.magic,
             "comment": params.comment,
             "type_time": mt5.ORDER_TIME_GTC,

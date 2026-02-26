@@ -19,7 +19,7 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from xp3_forex.core import config
+from xp3_forex.core.settings import settings
 
 logger = logging.getLogger("news_filter")
 
@@ -28,13 +28,13 @@ CACHE_DURATION_HOURS = 4
 
 class NewsFilter:
     def __init__(self):
-        self.enabled = getattr(config, 'ENABLE_NEWS_FILTER', True)
-        self.news_url = getattr(config, 'NEWS_URL', "https://nfs.faireconomy.media/ff_calendar_thisweek.json")
-        self.block_before = getattr(config, 'NEWS_BLOCK_MINUTES_BEFORE', 30)
-        self.block_after = getattr(config, 'NEWS_BLOCK_MINUTES_AFTER', 30)
+        self.enabled = settings.ENABLE_NEWS_FILTER
+        self.news_url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json" # Hardcoded default as fallback or move to settings
+        self.block_before = settings.NEWS_BLOCK_MINUTES_BEFORE
+        self.block_after = settings.NEWS_BLOCK_MINUTES_AFTER
         self.calendar = []
-        self.use_mt5_calendar = getattr(config, 'USE_MT5_CALENDAR', True)
-        self.mt5_calendar_path = Path(getattr(config, 'MT5_CALENDAR_JSON_PATH', 'data/mt5_calendar.json'))
+        self.use_mt5_calendar = True # Default or settings
+        self.mt5_calendar_path = settings.DATA_DIR / 'mt5_calendar.json'
         self._load_cache()
 
     def _load_cache(self):
@@ -43,7 +43,7 @@ class NewsFilter:
         if self.use_mt5_calendar and self.mt5_calendar_path.exists():
             try:
                 mtime = datetime.fromtimestamp(self.mt5_calendar_path.stat().st_mtime)
-                refresh_minutes = getattr(config, 'MT5_CALENDAR_REFRESH_MINUTES', 30)
+                refresh_minutes = 30 # Default or settings
                 if datetime.now() - mtime < timedelta(minutes=refresh_minutes):
                     with open(self.mt5_calendar_path, 'r', encoding='utf-8') as f:
                         self.calendar = json.load(f)

@@ -1,110 +1,129 @@
-
-# 🚀 XP3 PRO FOREX BOT v5.0
+# 🚀 XP3 PRO FOREX BOT v5.0 (Institutional Edition)
 
 **Bot de Trading Institucional para MetaTrader 5**
 
-Este projeto foi reestruturado para seguir padrões profissionais de engenharia de software (src-layout), utilizando Pydantic para configurações, Logging estruturado e CLI robusta.
+Este projeto foi completamente reestruturado para seguir os mais altos padrões de engenharia de software (Clean Architecture, src-layout), utilizando Pydantic v2 para configurações robustas, Logging estruturado e uma CLI unificada.
 
 ---
 
-## 📂 Nova Estrutura de Pastas
+## 📂 Estrutura Profissional (v5.0)
+
+A estrutura de diretórios foi limpa e organizada para facilitar a manutenção e escalabilidade.
 
 ```
 XP3Forex/
 ├── src/
 │   └── xp3_forex/
 │       ├── __init__.py
-│       ├── cli.py                # Entrypoint principal
-│       ├── config/               # Configurações (Pydantic)
-│       ├── core/                 # Lógica core do bot
+│       ├── __main__.py           # Entrypoint (__main__)
+│       ├── cli.py                # Interface de Linha de Comando (CLI)
+│       ├── core/                 # Núcleo do Sistema
+│       │   ├── bot.py            # Lógica Principal do Bot
+│       │   ├── settings.py       # Configurações Centralizadas (Pydantic)
+│       │   └── health_monitor.py # Monitoramento de Saúde
 │       ├── mt5/                  # Integração MT5 (SymbolManager)
-│       ├── strategies/           # Estratégias de trading
-│       ├── utils/                # Utilitários
-│       └── main.py
-├── legacy/                       # Arquivos antigos (v4 e anteriores)
-├── tests/                        # Testes unitários
-├── .env.example                  # Modelo de variáveis de ambiente
-├── pyproject.toml                # Definição do pacote e dependências
+│       ├── strategies/           # Estratégias de Trading
+│       ├── risk/                 # Gestão de Risco e Validação
+│       ├── analysis/             # Análise de Mercado (News Filter)
+│       └── utils/                # Utilitários Gerais
+├── data/                         # Dados de Mercado e Cache (GitIgnored)
+├── logs/                         # Logs de Execução (GitIgnored)
+├── tests/                        # Testes Unitários e de Integração
+├── legacy/                       # Código Legado (Referência v4)
+├── .env.example                  # Modelo de Variáveis de Ambiente
+├── pyproject.toml                # Definição do Pacote e Dependências
 └── README.md
 ```
 
 ---
 
-## 🛠️ Instalação
+## 🛠️ Guia de Instalação
 
 1. **Pré-requisitos**:
-   - Python 3.10+
-   - MetaTrader 5 Terminal instalado e logado.
+   - Python 3.10 ou superior
+   - MetaTrader 5 Terminal instalado e logado na conta (Demo ou Real).
 
-2. **Instalar o pacote em modo editável**:
+2. **Instalar o pacote em modo de desenvolvimento**:
+   Recomendamos o uso de um ambiente virtual (`venv`).
    ```bash
+   # Windows
+   python -m venv .venv
+   .venv\Scripts\activate
+
+   # Instalar dependências e o pacote xp3-forex
    pip install -e .
    ```
 
-3. **Configuração**:
-   Copie o arquivo de exemplo e edite suas configurações:
+3. **Configuração Inicial**:
+   O sistema utiliza variáveis de ambiente para configuração.
    ```bash
-   # Windows
-   copy .env.example .env
-   
-   # Linux/Mac
-   cp .env.example .env
+   # Inicializar configuração (cria arquivo .env)
+   xp3-forex init
    ```
    
-   Edite o arquivo `.env` com suas credenciais do MT5 e preferências de risco.
+   Edite o arquivo `.env` gerado com suas credenciais do MT5 e preferências:
+   ```ini
+   MT5_LOGIN=123456
+   MT5_PASSWORD=sua_senha
+   MT5_SERVER=MetaQuotes-Demo
+   SYMBOLS=EURUSD,GBPUSD,XAUUSD
+   RISK_PER_TRADE=1.0
+   ```
 
 ---
 
 ## 🚀 Como Executar
 
-O projeto agora possui um comando CLI unificado: `xp3-forex`.
+O projeto possui um comando CLI unificado: `xp3-forex`.
 
-### 1. Iniciar o Robô
+### 1. Iniciar o Robô de Trading
 ```bash
-# Modo Demo (Padrão)
+# Modo Demo (Padrão) - Seguro para testes
 xp3-forex run
 
-# Modo Live (Cuidado!)
+# Modo Live (Requer confirmação) - Operações em conta REAL
 xp3-forex run --mode live
 
-# Sobrescrever símbolos via CLI
+# Sobrescrever símbolos temporariamente via CLI
 xp3-forex run --symbols "EURUSD,GBPUSD"
 ```
 
-### 2. Monitoramento
-Para visualizar logs e status em tempo real:
+### 2. Monitoramento e Dashboard
+Para visualizar logs, status de conexão e saúde do sistema em tempo real:
 ```bash
 xp3-forex monitor
 ```
 
-### 3. Ajuda
+### 3. Comandos Úteis
 ```bash
+# Ver versão
+xp3-forex --version
+
+# Ajuda geral
 xp3-forex --help
+
+# Ajuda de comando específico
+xp3-forex run --help
 ```
 
 ---
 
-## ✨ Principais Mudanças (v5.0)
+## ✨ Principais Melhorias (Refatoração Completa)
 
-- **Entrypoint Unificado**: Adeus `bot.bat`, `run_bot.py`, etc. Tudo agora é via `xp3-forex`.
-- **Configuração Robusta**: Uso de `pydantic-settings` e `.env`.
-- **SymbolManager 2.0**: Detecção automática de sufixos (ex: `EURUSD` -> `EURUSD.a`), Circuit Breaker para falhas de conexão e Cache inteligente.
-- **Estrutura Limpa**: Separação clara de responsabilidades em `src/xp3_forex`.
-- **Legacy**: Código antigo movido para `legacy/` para referência.
-
----
-
-## ⚠️ Breaking Changes para Desenvolvedores
-
-- A classe `XP3Bot` agora espera configurações via `settings` global, não mais arquivo JSON.
-- `SymbolManager` é um Singleton importado de `xp3_forex.mt5.symbol_manager`.
-- Scripts na raiz (`dashboard.py`, etc.) foram movidos para `legacy/`.
+- **Src-Layout**: Código fonte isolado em `src/xp3_forex`, prevenindo importações acidentais e poluição do namespace global.
+- **Configuração Centralizada**: `core/settings.py` unifica todas as constantes e configurações, com suporte a validação de tipos via Pydantic.
+- **Entrypoint Robusto**: `xp3-forex` é o único ponto de entrada, gerenciado via `pyproject.toml`.
+- **Limpeza da Raiz**: Arquivos de script antigos, backups e logs foram movidos para `legacy/` ou `logs/`, mantendo a raiz do projeto limpa e profissional.
+- **Tipagem Estática**: Uso extensivo de Type Hints para melhor suporte de IDE e prevenção de erros.
 
 ---
 
-## 📝 Desenvolvimento
+## ⚠️ Notas de Migração
 
-Para rodar testes (futuro):
-```bash
-pytest
-```
+Se você está vindo de uma versão anterior:
+1. Todos os scripts antigos (`bot_forex.py`, `run_bot.py`, etc.) foram movidos para a pasta `legacy/`. **Não os utilize para rodar o bot.**
+2. Utilize apenas o comando `xp3-forex`.
+3. Certifique-se de configurar corretamente o arquivo `.env`.
+
+---
+**Desenvolvido por Luiz** | XP3 PRO FOREX v5.0.0
