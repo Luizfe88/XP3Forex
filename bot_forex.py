@@ -61,7 +61,7 @@ try:
     from xp3_forex.core import config as config
     from xp3_forex.utils import mt5_utils, indicators, calculations, data_utils as utils
     from xp3_forex.risk.validation import validate_and_create_order_forex, OrderParams, OrderSide
-    from xp3_forex.analysis.news_filter from xp3_forex.analysis import news_filter
+    from xp3_forex.analysis import news_filter
     from daily_analysis_logger import daily_logger # ✅ Land Trading Standard
     try:
         from risk_engine import block_manager, profit_optimizer, adaptive_manager
@@ -3253,6 +3253,16 @@ def main():
 
     sync_result = utils.sync_market_watch(allowed)
     
+    # ✅ NOVO: Inicialização Robusta de Símbolos (MT5 Utils Rewrite)
+    logger.info("🚀 Inicializando símbolos com validação robusta...")
+    validated_symbols = mt5_utils.initialize_market_data(allowed)
+    if not validated_symbols:
+        logger.warning("⚠️ Nenhum símbolo pôde ser validado/inicializado corretamente.")
+    else:
+        logger.info(f"✅ {len(validated_symbols)} símbolos validados e prontos.")
+        # Atualiza a lista allowed com os nomes resolvidos (ex: EURUSD -> EURUSD.a)
+        allowed = validated_symbols
+
     # ✅ REQUISITO: Log de Versão MT5 para Diagnóstico
     try:
         ver = mt5_exec(mt5.version)

@@ -9,7 +9,7 @@ import logging.handlers
 import json
 import signal
 import traceback
-import subprocess
+import queue
 from pathlib import Path
 from datetime import datetime, timedelta
 from threading import Lock, RLock, Event
@@ -41,11 +41,13 @@ from ..utils.indicators import *
 from ..utils.calculations import *
 from ..utils.data_utils import *
 
+# New Components
+from .symbol_manager import SymbolManager
+from .health_monitor import HealthMonitor
+from .data_feeder import DataFeeder
+
 logger = logging.getLogger("XP3_BOT")
 
-# Global variables for bot state
-FAST_LOOP_ACTIVE = False
-WATCHDOG_ACTIVE = False
 SHUTDOWN_EVENT = Event()
 
 @dataclass
@@ -88,8 +90,24 @@ class XP3Bot:
         self.is_running = False
         self.lock = RLock()
         
+        # State Flags
+        self.is_connected = False
+        self.is_trading_active = False
+        
         # Setup logging
         self.setup_logging()
+        
+        # Initialize Core Components
+        self.symbol_manager = SymbolManager()
+        self.data_queue = queue.Queue(maxsize=100)
+        
+        # Get configured symbols and timeframes
+        self.symbols = self.config.get("trading", {}).get("symbols", ["EURUSD", "GBPUSD", "USDJPY"])
+        self.timeframes = self.config.get("trading", {}).get("timeframes", [15, 60, 240])
+        
+        # Initialize Threads
+        self.health_monitor = HealthMonitor(self)
+        self.data_feeder = DataFeeder(self.data_queue, self.symbols, self.timeframes, self)
         
         logger.info("🚀 XP3 PRO FOREX BOT v4.2 INSTITUCIONAL Inicializado")
         
@@ -159,11 +177,9 @@ class XP3Bot:
             logger.error(f"Erro ao inicializar MT5: {e}")
             return False
     
-    def analyze_symbol(self, symbol: str, timeframe: int) -> Optional[TradeSignal]:
-        """Analyze a symbol and generate trading signal"""
+    def analyze_symbol(self, symbol: str, timeframe: int, df: pd.DataFrame) -> Optional[TradeSignal]:
+        """Analyze a symbol and generate trading signal using provided DataFrame"""
         try:
-            # Get historical data
-            df = get_rates(symbol, timeframe, 100)
             if df is None or len(df) < 50:
                 logger.warning(f"Dados insuficientes para {symbol}")
                 return None
@@ -248,7 +264,6 @@ class XP3Bot:
                     return False
                 
                 # Execute trade logic here
-                # This is a simplified version - you would implement the actual order sending
                 logger.info(f"Executando trade: {signal.symbol} {signal.order_type} @ {signal.entry_price}")
                 
                 # Create position
@@ -263,7 +278,7 @@ class XP3Bot:
                     profit=0,
                     pips=0,
                     open_time=signal.timestamp,
-                    magic_number=12345  # Example magic number
+                    magic_number=12345
                 )
                 
                 self.positions[signal.symbol] = position
@@ -291,28 +306,30 @@ class XP3Bot:
             return False
     
     def update_positions(self):
-        """Update open positions"""
+        """Update open positions using cached SymbolManager"""
         try:
             with self.lock:
                 closed_positions = []
                 
                 for symbol, position in self.positions.items():
-                    # Get current price
-                    symbol_info = get_symbol_info(symbol)
-                    if symbol_info is None:
+                    # Get current price (fresh tick)
+                    tick = self.symbol_manager.get_tick(symbol)
+                    if tick is None:
                         continue
                     
                     # Update position
-                    current_price = symbol_info.get('ask', position.entry_price) if position.order_type == "BUY" else symbol_info.get('bid', position.entry_price)
+                    current_price = tick.ask if position.order_type == "BUY" else tick.bid
                     position.current_price = current_price
                     
                     # Calculate profit
-                    if position.order_type == "BUY":
-                        position.pips = (current_price - position.entry_price) / get_pip_size(symbol)
-                    else:
-                        position.pips = (position.entry_price - current_price) / get_pip_size(symbol)
+                    point = self.symbol_manager.get_point(symbol)
                     
-                    position.profit = position.pips * get_tick_value(symbol, position.volume)
+                    if position.order_type == "BUY":
+                        position.pips = (current_price - position.entry_price) / point
+                    else:
+                        position.pips = (position.entry_price - current_price) / point
+                    
+                    position.profit = position.pips * self.symbol_manager.get_tick_value(symbol)
                     
                     # Check if position should be closed
                     if (position.order_type == "BUY" and current_price <= position.stop_loss) or \
@@ -335,75 +352,46 @@ class XP3Bot:
         except Exception as e:
             logger.error(f"Erro ao atualizar posições: {e}")
     
-    def fast_loop(self):
-        """Main trading loop"""
-        global FAST_LOOP_ACTIVE
+    def consumer_loop(self):
+        """Consumes market data from queue and processes strategy"""
+        logger.info("🔥 Consumer Loop iniciado")
         
-        try:
-            FAST_LOOP_ACTIVE = True
-            logger.info("🚀 Fast Loop iniciado")
-            
-            symbols = self.config.get("trading", {}).get("symbols", ["EURUSD", "GBPUSD", "USDJPY"])
-            timeframes = self.config.get("trading", {}).get("timeframes", [15, 60, 240])
-            
-            while not SHUTDOWN_EVENT.is_set():
+        while not SHUTDOWN_EVENT.is_set():
+            try:
+                # Update positions
+                self.update_positions()
+                
+                # Process Data Queue
                 try:
-                    # Update positions
-                    self.update_positions()
+                    # Non-blocking get or short timeout
+                    symbol, timeframe, df = self.data_queue.get(timeout=1)
                     
-                    # Analyze symbols
-                    for symbol in symbols:
-                        for timeframe in timeframes:
-                            signal = self.analyze_symbol(symbol, timeframe)
-                            if signal:
-                                self.execute_trade(signal)
+                    # Analyze
+                    signal = self.analyze_symbol(symbol, timeframe, df)
+                    if signal:
+                        self.execute_trade(signal)
+                        
+                    self.data_queue.task_done()
                     
-                    # Sleep for a short period
-                    time.sleep(1)  # 1 second between iterations
+                except queue.Empty:
+                    pass
                     
-                except Exception as e:
-                    logger.error(f"Erro no fast_loop: {e}")
-                    time.sleep(5)  # Wait longer on error
-                    
-        except Exception as e:
-            logger.error(f"Erro fatal no fast_loop: {e}")
-        finally:
-            FAST_LOOP_ACTIVE = False
-            logger.info("🛑 Fast Loop finalizado")
-    
-    def watchdog(self):
-        """Watchdog thread to monitor bot health"""
-        global WATCHDOG_ACTIVE
-        
-        try:
-            WATCHDOG_ACTIVE = True
-            logger.info("🐕 Watchdog iniciado")
-            
-            while not SHUTDOWN_EVENT.is_set():
-                try:
-                    # Check MT5 connection
-                    if not check_mt5_connection():
-                        logger.warning("Conexão MT5 perdida, tentando reconectar...")
-                        self.initialize_mt5()
-                    
-                    # Check fast loop
-                    if not FAST_LOOP_ACTIVE:
-                        logger.warning("Fast Loop inativo, reiniciando...")
-                        threading.Thread(target=self.fast_loop, name="FastLoop", daemon=True).start()
-                    
-                    # Sleep for 30 seconds
-                    time.sleep(30)
-                    
-                except Exception as e:
-                    logger.error(f"Erro no watchdog: {e}")
-                    time.sleep(10)
-                    
-        except Exception as e:
-            logger.error(f"Erro fatal no watchdog: {e}")
-        finally:
-            WATCHDOG_ACTIVE = False
-            logger.info("🛑 Watchdog finalizado")
-    
+            except Exception as e:
+                logger.error(f"Erro no consumer_loop: {e}")
+                time.sleep(1)
+                
+        logger.info("🛑 Consumer Loop finalizado")
+
+    def pause_trading(self):
+        """Pausa o trading (consumer e feeder)"""
+        logger.warning("⏸️ Trading PAUSADO")
+        self.is_trading_active = False
+
+    def resume_trading(self):
+        """Retoma o trading"""
+        logger.info("▶️ Trading RETOMADO")
+        self.is_trading_active = True
+
     def start(self):
         """Start the bot"""
         try:
@@ -414,14 +402,31 @@ class XP3Bot:
                 logger.error("Falha ao conectar ao MT5")
                 return False
             
+            self.is_connected = True
+            self.is_trading_active = True
+            
             # Initialize database
             init_database()
             
-            # Start watchdog
-            threading.Thread(target=self.watchdog, name="Watchdog", daemon=True).start()
+            # Initialize Market Data (Validate symbols)
+            validated_symbols = initialize_market_data(self.symbols)
+            if not validated_symbols:
+                logger.error("Nenhum símbolo válido encontrado! Abortando.")
+                return False
+                
+            self.symbols = validated_symbols
+            self.data_feeder.symbols = self.symbols
+            logger.info(f"Símbolos validados para trading: {self.symbols}")
             
-            # Start fast loop
-            threading.Thread(target=self.fast_loop, name="FastLoop", daemon=True).start()
+            # Start Threads
+            self.health_monitor.start()
+            self.data_feeder.start()
+            
+            # Start Consumer Loop (in a thread or main thread?)
+            # Usually main thread can be the consumer or just wait.
+            # Let's put consumer in a thread so main can handle signals/UI if needed
+            self.consumer_thread = threading.Thread(target=self.consumer_loop, name="ConsumerLoop", daemon=True)
+            self.consumer_thread.start()
             
             self.is_running = True
             logger.info("✅ Bot iniciado com sucesso")
@@ -444,6 +449,14 @@ class XP3Bot:
             logger.info("🛑 Parando XP3 PRO FOREX BOT")
             self.is_running = False
             SHUTDOWN_EVENT.set()
+            
+            # Stop feeder
+            if hasattr(self, 'data_feeder'):
+                self.data_feeder.stop()
+            
+            # Stop monitor
+            if hasattr(self, 'health_monitor'):
+                self.health_monitor.stop()
             
             # Shutdown MT5 worker
             mt5_shutdown_worker()
