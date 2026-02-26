@@ -1,30 +1,62 @@
-[tool.poetry]
-name = "xp3_forex"
-version = "0.1.0"
-description = "XP3 PRO FOREX - Trading bot institucional com ML, Optuna e MT5"
-authors = ["Luiz <you@example.com>"]
-license = "MIT"
-readme = "README.md"
-packages = [{ include = "xp3_forex", from = "src" }]
-
-[tool.poetry.dependencies]
-python = "^3.8"
-MetaTrader5 = "*"
-pandas = "*"
-numpy = "*"
-numba = "*"
-optuna = "*"
-scikit-learn = "*"
-python-dotenv = "*"
-pydantic = "*"
-pydantic-settings = "*"
-requests = "*"
-pytz = "*"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "*"
-pre-commit = "*"
-
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xp3_forex"
+version = "5.0.0"
+description = "XP3 PRO FOREX - Bot de Trading Institucional para MetaTrader 5"
+readme = "README.md"
+authors = [
+    { name = "Luiz", email = "you@example.com" }
+]
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+    "MetaTrader5>=5.0.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "scikit-learn>=1.3.0",
+    "optuna>=3.0.0",
+    "numba>=0.57.0",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+    "schedule>=1.2.0",
+    "colorlog>=6.7.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.4.0"
+]
+
+[project.scripts]
+xp3-forex = "xp3_forex.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["xp3_forex*"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 100

@@ -35,14 +35,14 @@ import MetaTrader5 as mt5
 import numpy as np
 import pandas as pd
 
-from .config import *
+from ..config.settings import settings
 from ..utils.mt5_utils import *
 from ..utils.indicators import *
 from ..utils.calculations import *
 from ..utils.data_utils import *
 
 # New Components
-from .symbol_manager import SymbolManager
+from ..mt5.symbol_manager import SymbolManager
 from .health_monitor import HealthMonitor
 from .data_feeder import DataFeeder
 
@@ -81,9 +81,7 @@ class Position:
 class XP3Bot:
     """Main bot class"""
     
-    def __init__(self, config_path: str = "config/config.json"):
-        self.config_path = Path(config_path)
-        self.config = self.load_config()
+    def __init__(self):
         self.positions: Dict[str, Position] = {}
         self.signals: deque = deque(maxlen=1000)
         self.performance_metrics = defaultdict(float)
@@ -102,51 +100,22 @@ class XP3Bot:
         self.data_queue = queue.Queue(maxsize=100)
         
         # Get configured symbols and timeframes
-        self.symbols = self.config.get("trading", {}).get("symbols", ["EURUSD", "GBPUSD", "USDJPY"])
-        self.timeframes = self.config.get("trading", {}).get("timeframes", [15, 60, 240])
+        self.symbols = settings.symbols_list
+        self.timeframes = settings.timeframes_list
         
         # Initialize Threads
         self.health_monitor = HealthMonitor(self)
         self.data_feeder = DataFeeder(self.data_queue, self.symbols, self.timeframes, self)
         
-        logger.info("🚀 XP3 PRO FOREX BOT v4.2 INSTITUCIONAL Inicializado")
+        logger.info(f"🚀 XP3 PRO FOREX BOT v5.0 INSTITUCIONAL Inicializado")
+        logger.info(f"Symbols: {self.symbols}")
         
-    def load_config(self) -> Dict[str, Any]:
-        """Load configuration from file"""
-        try:
-            if self.config_path.exists():
-                with open(self.config_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            else:
-                logger.warning(f"Arquivo de configuração não encontrado: {self.config_path}")
-                return self.create_default_config()
-        except Exception as e:
-            logger.error(f"Erro ao carregar configuração: {e}")
-            return self.create_default_config()
-    
-    def create_default_config(self) -> Dict[str, Any]:
-        """Create default configuration"""
-        return {
-            "mt5": {
-                "login": 12345678,
-                "password": "password",
-                "server": "Broker-Demo",
-                "path": MT5_TERMINAL_PATH
-            },
-            "trading": {
-                "symbols": ["EURUSD", "GBPUSD", "USDJPY"],
-                "timeframes": [15, 60, 240],
-                "risk_per_trade": 0.02,
-                "max_positions": 5
-            }
-        }
-    
     def setup_logging(self):
         """Setup logging configuration"""
-        log_level = getattr(logging, self.config.get("logging", {}).get("level", "INFO"))
+        log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
         
         # Create logs directory
-        LOGS_DIR.mkdir(exist_ok=True)
+        settings.LOGS_DIR.mkdir(parents=True, exist_ok=True)
         
         # Configure logging
         logging.basicConfig(
@@ -155,9 +124,9 @@ class XP3Bot:
             handlers=[
                 logging.StreamHandler(sys.stdout),
                 logging.handlers.RotatingFileHandler(
-                    LOGS_DIR / "xp3_forex.log",
-                    maxBytes=LOG_MAX_FILE_SIZE_MB * 1024 * 1024,
-                    backupCount=LOG_BACKUP_COUNT,
+                    settings.get_log_file(),
+                    maxBytes=50 * 1024 * 1024,
+                    backupCount=3,
                     encoding="utf-8"
                 )
             ]
@@ -166,12 +135,15 @@ class XP3Bot:
     def initialize_mt5(self) -> bool:
         """Initialize MT5 connection"""
         try:
-            mt5_config = self.config.get("mt5", {})
+            # Se já estiver conectado pelo HealthMonitor ou externo, retorna True
+            if mt5.terminal_info() is not None:
+                return True
+                
             return initialize_mt5(
-                mt5_config.get("login"),
-                mt5_config.get("password"),
-                mt5_config.get("server"),
-                mt5_config.get("path", MT5_TERMINAL_PATH)
+                settings.MT5_LOGIN,
+                settings.MT5_PASSWORD,
+                settings.MT5_SERVER,
+                settings.MT5_PATH
             )
         except Exception as e:
             logger.error(f"Erro ao inicializar MT5: {e}")

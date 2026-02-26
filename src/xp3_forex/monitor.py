@@ -18,13 +18,23 @@ from typing import Dict, Any
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 
-from xp3_forex.core.config import LOGS_DIR
+from xp3_forex.config.settings import settings
+
+def start_monitor():
+    """Start the monitor process"""
+    try:
+        monitor = SimpleMonitor(log_file=settings.get_log_file())
+        monitor.run()
+    except KeyboardInterrupt:
+        print("\n🛑 Monitor stopped by user")
+    except Exception as e:
+        print(f"❌ Fatal error: {e}")
 
 class SimpleMonitor:
     """Simple monitor for XP3 PRO FOREX"""
     
-    def __init__(self, log_file: str = None):
-        self.log_file = log_file or LOGS_DIR / "xp3_forex.log"
+    def __init__(self, log_file: Path = None):
+        self.log_file = log_file or settings.get_log_file()
         self.running = True
         self.last_position = 0
         self.signal_buffer = deque(maxlen=100)
