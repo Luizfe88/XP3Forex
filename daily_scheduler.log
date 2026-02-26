@@ -607,3 +607,281 @@
 2026-02-20 22:00:03,855 - __main__ - INFO - \U0001f4cb O rob� XP3 PRO agora usar� os pares selecionados para opera��o
 
 2026-02-20 22:00:03,882 - __main__ - INFO - ✅ Análise diária concluída com sucesso!
+2026-02-24 22:00:34,846 - __main__ - INFO - 🚀 Iniciando análise diária...
+2026-02-24 22:01:00,368 - __main__ - INFO - 📊 Saída da análise:
+
+============================================================
+🧠 ANÁLISE DIÁRIA XP3 PRO v5.0
+============================================================
+📅 Data: 2026-02-24T22:00:36.904694
+🌍 Sessão: Sydney/Tokyo
+💡 Sentimento: Neutral
+
+🎯 PARES SELECIONADOS PARA HOJE (3):
+------------------------------------------------------------
+1. USDCAD | Bullish | Score: 62.1 | ATR: 69.7 pips
+   💪 Força Relativa: 8.6 | Base: 1.7 | Quote: -7.0
+   📋 Motivo: Trend Score: 62.1 | Direction: Bullish
+
+2. CADJPY | Bearish | Score: 62.1 | ATR: 186.2 pips
+   💪 Força Relativa: 12.2 | Base: -7.0 | Quote: 5.2
+   📋 Motivo: Trend Score: 62.1 | Direction: Bearish
+
+3. EURCAD | Bullish | Score: 55.7 | ATR: 103.3 pips
+   💪 Força Relativa: 11.1 | Base: 4.1 | Quote: -7.0
+   📋 Motivo: Trend Score: 55.7 | Direction: Bullish
+
+============================================================
+📊 Total analisado: 23 pares
+🚫 Evitados por notícias: 0 pares
+============================================================
+
+2026-02-24 22:01:02,688 - __main__ - ERROR - ⚠️ Erros da análise:
+2026-02-24 22:00:35,189 - __main__ - INFO - \U0001f680 Iniciando Analisador Di�rio XP3 PRO v5.0
+2026-02-24 22:00:35,191 - __main__ - INFO - \U0001f680 Iniciando an�lise di�ria XP3 PRO v5.0
+2026-02-24 22:00:35,192 - __main__ - INFO - \U0001f4c5 Data: 2026-02-24 22:00:35
+2026-02-24 22:00:35,192 - __main__ - INFO - \U0001f50d Iniciando an�lise di�ria de mercado...
+2026-02-24 22:00:35,192 - __main__ - INFO - \U0001f4ca Analisando sentimento de mercado...
+2026-02-24 22:00:35,192 - __main__ - INFO - \U0001f4a1 Sentimento detectado: Neutral
+2026-02-24 22:00:35,192 - __main__ - INFO - \U0001f4aa Analisando for�a relativa das moedas...
+2026-02-24 22:00:35,264 - __main__ - INFO - \U0001f4c8 Analisando for�a de tend�ncia dos pares...
+2026-02-24 22:00:36,892 - __main__ - INFO - \u2705 Selecionados 3 pares para opera��o
+2026-02-24 22:00:36,904 - __main__ - INFO - \U0001f4ca An�lise completa gerada com sucesso!
+2026-02-24 22:00:37,627 - __main__ - INFO - \u2705 An�lise salva em: daily_selected_pairs.json
+2026-02-24 22:00:37,852 - __main__ - INFO - \u2705 Lista simplificada salva em: simple_pairs_list.json
+2026-02-24 22:00:37,852 - __main__ - INFO - \u2705 An�lise di�ria conclu�da com sucesso!
+2026-02-24 22:00:37,852 - __main__ - INFO - \U0001f4cb O rob� XP3 PRO agora usar� os pares selecionados para opera��o
+
+2026-02-24 22:01:02,689 - __main__ - INFO - ✅ Análise diária concluída com sucesso!
+2026-02-25 20:00:02,210 - __main__ - INFO - 🚀 Iniciando análise diária...
+2026-02-25 20:00:02,452 - __main__ - INFO - 📊 Saída da análise:
+
+============================================================
+🧠 ANÁLISE DIÁRIA XP3 PRO v5.0
+============================================================
+📅 Data: 2026-02-25T20:00:02.409639
+🌍 Sessão: New York
+💡 Sentimento: Volatile
+
+🎯 PARES SELECIONADOS PARA HOJE (6):
+------------------------------------------------------------
+1. GBPCHF | Bullish | Score: 85.2 | ATR: 138.6 pips
+   💪 Força Relativa: 11.9 | Base: 5.7 | Quote: -6.1
+   📋 Motivo: Trend Score: 85.2 | Direction: Bullish
+
+2. USDCHF | Bullish | Score: 78.0 | ATR: 199.5 pips
+   💪 Força Relativa: 9.2 | Base: 3.0 | Quote: -6.1
+   📋 Motivo: Trend Score: 78.0 | Direction: Bullish
+
+3. EURGBP | Bearish | Score: 61.5 | ATR: 114.7 pips
+   💪 Força Relativa: 6.3 | Base: -0.5 | Quote: 5.7
+   📋 Motivo: Trend Score: 61.5 | Direction: Bearish
+
+4. USDCAD | Bullish | Score: 56.5 | ATR: 131.6 pips
+   💪 Força Relativa: 7.5 | Base: 3.0 | Quote: -4.5
+   📋 Motivo: Trend Score: 56.5 | Direction: Bullish
+
+5. GBPJPY | Bullish | Score: 55.3 | ATR: 184.8 pips
+   💪 Força Relativa: 5.6 | Base: 5.7 | Quote: 0.1
+   📋 Motivo: Trend Score: 55.3 | Direction: Bullish
+
+6. NZDUSD | Bearish | Score: 51.5 | ATR: 136.1 pips
+   💪 Força Relativa: 4.7 | Base: -1.7 | Quote: 3.0
+   📋 Motivo: Trend Score: 51.5 | Direction: Bearish
+
+============================================================
+📊 Total analisado: 23 pares
+🚫 Evitados por notícias: 0 pares
+============================================================
+
+2026-02-25 20:00:02,453 - __main__ - ERROR - ⚠️ Erros da análise:
+2026-02-25 20:00:02,402 - __main__ - INFO - \U0001f680 Iniciando Analisador Di�rio XP3 PRO v5.0
+2026-02-25 20:00:02,405 - __main__ - INFO - \U0001f680 Iniciando an�lise di�ria XP3 PRO v5.0
+2026-02-25 20:00:02,406 - __main__ - INFO - \U0001f4c5 Data: 2026-02-25 20:00:02
+2026-02-25 20:00:02,406 - __main__ - INFO - \U0001f50d Iniciando an�lise di�ria de mercado...
+2026-02-25 20:00:02,406 - __main__ - INFO - \U0001f4ca Analisando sentimento de mercado...
+2026-02-25 20:00:02,407 - __main__ - INFO - \U0001f4a1 Sentimento detectado: Trending
+2026-02-25 20:00:02,407 - __main__ - INFO - \U0001f4aa Analisando for�a relativa das moedas...
+2026-02-25 20:00:02,408 - __main__ - INFO - \U0001f4c8 Analisando for�a de tend�ncia dos pares...
+2026-02-25 20:00:02,409 - __main__ - INFO - \u2705 Selecionados 6 pares para opera��o
+2026-02-25 20:00:02,409 - __main__ - INFO - \U0001f4ca An�lise completa gerada com sucesso!
+2026-02-25 20:00:02,414 - __main__ - INFO - \u2705 An�lise salva em: daily_selected_pairs.json
+2026-02-25 20:00:02,419 - __main__ - INFO - \u2705 Lista simplificada salva em: simple_pairs_list.json
+2026-02-25 20:00:02,420 - __main__ - INFO - \u2705 An�lise di�ria conclu�da com sucesso!
+2026-02-25 20:00:02,421 - __main__ - INFO - \U0001f4cb O rob� XP3 PRO agora usar� os pares selecionados para opera��o
+
+2026-02-25 20:00:02,453 - __main__ - INFO - ✅ Análise diária concluída com sucesso!
+2026-02-25 22:00:01,868 - __main__ - INFO - 🚀 Iniciando análise diária...
+2026-02-25 22:00:02,243 - __main__ - INFO - 📊 Saída da análise:
+
+============================================================
+🧠 ANÁLISE DIÁRIA XP3 PRO v5.0
+============================================================
+📅 Data: 2026-02-25T22:00:02.154683
+🌍 Sessão: Sydney/Tokyo
+💡 Sentimento: Risk-On
+
+🎯 PARES SELECIONADOS PARA HOJE (6):
+------------------------------------------------------------
+1. AUDNZD | Bullish | Score: 70.3 | ATR: 160.9 pips
+   💪 Força Relativa: 11.7 | Base: 6.2 | Quote: -5.4
+   📋 Motivo: Trend Score: 70.3 | Direction: Bullish
+
+2. GBPJPY | Bullish | Score: 69.4 | ATR: 105.0 pips
+   💪 Força Relativa: 13.9 | Base: 6.5 | Quote: -7.4
+   📋 Motivo: Trend Score: 69.4 | Direction: Bullish
+
+3. EURGBP | Bearish | Score: 66.8 | ATR: 136.3 pips
+   💪 Força Relativa: 13.3 | Base: -6.7 | Quote: 6.5
+   📋 Motivo: Trend Score: 66.8 | Direction: Bearish
+
+4. EURAUD | Bearish | Score: 65.4 | ATR: 66.4 pips
+   💪 Força Relativa: 13.0 | Base: -6.7 | Quote: 6.2
+   📋 Motivo: Trend Score: 65.4 | Direction: Bearish
+
+5. AUDJPY | Bullish | Score: 62.1 | ATR: 175.2 pips
+   💪 Força Relativa: 13.6 | Base: 6.2 | Quote: -7.4
+   📋 Motivo: Trend Score: 62.1 | Direction: Bullish
+
+6. EURCHF | Bearish | Score: 53.0 | ATR: 191.3 pips
+   💪 Força Relativa: 10.1 | Base: -6.7 | Quote: 3.3
+   📋 Motivo: Trend Score: 53.0 | Direction: Bearish
+
+============================================================
+📊 Total analisado: 23 pares
+🚫 Evitados por notícias: 0 pares
+============================================================
+
+2026-02-25 22:00:02,244 - __main__ - ERROR - ⚠️ Erros da análise:
+2026-02-25 22:00:02,150 - __main__ - INFO - \U0001f680 Iniciando Analisador Di�rio XP3 PRO v5.0
+2026-02-25 22:00:02,153 - __main__ - INFO - \U0001f680 Iniciando an�lise di�ria XP3 PRO v5.0
+2026-02-25 22:00:02,153 - __main__ - INFO - \U0001f4c5 Data: 2026-02-25 22:00:02
+2026-02-25 22:00:02,153 - __main__ - INFO - \U0001f50d Iniciando an�lise di�ria de mercado...
+2026-02-25 22:00:02,153 - __main__ - INFO - \U0001f4ca Analisando sentimento de mercado...
+2026-02-25 22:00:02,153 - __main__ - INFO - \U0001f4a1 Sentimento detectado: Volatile
+2026-02-25 22:00:02,154 - __main__ - INFO - \U0001f4aa Analisando for�a relativa das moedas...
+2026-02-25 22:00:02,154 - __main__ - INFO - \U0001f4c8 Analisando for�a de tend�ncia dos pares...
+2026-02-25 22:00:02,154 - __main__ - INFO - \u2705 Selecionados 6 pares para opera��o
+2026-02-25 22:00:02,154 - __main__ - INFO - \U0001f4ca An�lise completa gerada com sucesso!
+2026-02-25 22:00:02,156 - __main__ - INFO - \u2705 An�lise salva em: daily_selected_pairs.json
+2026-02-25 22:00:02,182 - __main__ - INFO - \u2705 Lista simplificada salva em: simple_pairs_list.json
+2026-02-25 22:00:02,183 - __main__ - INFO - \u2705 An�lise di�ria conclu�da com sucesso!
+2026-02-25 22:00:02,183 - __main__ - INFO - \U0001f4cb O rob� XP3 PRO agora usar� os pares selecionados para opera��o
+
+2026-02-25 22:00:02,245 - __main__ - INFO - ✅ Análise diária concluída com sucesso!
+2026-02-26 06:00:02,488 - __main__ - INFO - 🚀 Iniciando análise diária...
+2026-02-26 06:00:02,767 - __main__ - INFO - 📊 Saída da análise:
+
+============================================================
+🧠 ANÁLISE DIÁRIA XP3 PRO v5.0
+============================================================
+📅 Data: 2026-02-26T06:00:02.742528
+🌍 Sessão: Sydney/Tokyo
+💡 Sentimento: Risk-Off
+
+🎯 PARES SELECIONADOS PARA HOJE (6):
+------------------------------------------------------------
+1. GBPAUD | Bullish | Score: 71.3 | ATR: 167.3 pips
+   💪 Força Relativa: 11.7 | Base: 7.4 | Quote: -4.3
+   📋 Motivo: Trend Score: 71.3 | Direction: Bullish
+
+2. GBPCHF | Bullish | Score: 70.3 | ATR: 58.9 pips
+   💪 Força Relativa: 12.1 | Base: 7.4 | Quote: -4.7
+   📋 Motivo: Trend Score: 70.3 | Direction: Bullish
+
+3. AUDNZD | Bearish | Score: 61.8 | ATR: 129.5 pips
+   💪 Força Relativa: 9.4 | Base: -4.3 | Quote: 5.1
+   📋 Motivo: Trend Score: 61.8 | Direction: Bearish
+
+4. GBPJPY | Bullish | Score: 58.6 | ATR: 79.8 pips
+   💪 Força Relativa: 9.3 | Base: 7.4 | Quote: -1.9
+   📋 Motivo: Trend Score: 58.6 | Direction: Bullish
+
+5. USDCHF | Bullish | Score: 53.2 | ATR: 198.1 pips
+   💪 Força Relativa: 7.7 | Base: 3.0 | Quote: -4.7
+   📋 Motivo: Trend Score: 53.2 | Direction: Bullish
+
+6. EURGBP | Bearish | Score: 53.1 | ATR: 154.5 pips
+   💪 Força Relativa: 9.6 | Base: -2.2 | Quote: 7.4
+   📋 Motivo: Trend Score: 53.1 | Direction: Bearish
+
+============================================================
+📊 Total analisado: 23 pares
+🚫 Evitados por notícias: 0 pares
+============================================================
+
+2026-02-26 06:00:02,767 - __main__ - ERROR - ⚠️ Erros da análise:
+2026-02-26 06:00:02,738 - __main__ - INFO - \U0001f680 Iniciando Analisador Di�rio XP3 PRO v5.0
+2026-02-26 06:00:02,740 - __main__ - INFO - \U0001f680 Iniciando an�lise di�ria XP3 PRO v5.0
+2026-02-26 06:00:02,741 - __main__ - INFO - \U0001f4c5 Data: 2026-02-26 06:00:02
+2026-02-26 06:00:02,741 - __main__ - INFO - \U0001f50d Iniciando an�lise di�ria de mercado...
+2026-02-26 06:00:02,741 - __main__ - INFO - \U0001f4ca Analisando sentimento de mercado...
+2026-02-26 06:00:02,741 - __main__ - INFO - \U0001f4a1 Sentimento detectado: Risk-On
+2026-02-26 06:00:02,741 - __main__ - INFO - \U0001f4aa Analisando for�a relativa das moedas...
+2026-02-26 06:00:02,742 - __main__ - INFO - \U0001f4c8 Analisando for�a de tend�ncia dos pares...
+2026-02-26 06:00:02,742 - __main__ - INFO - \u2705 Selecionados 6 pares para opera��o
+2026-02-26 06:00:02,742 - __main__ - INFO - \U0001f4ca An�lise completa gerada com sucesso!
+2026-02-26 06:00:02,745 - __main__ - INFO - \u2705 An�lise salva em: daily_selected_pairs.json
+2026-02-26 06:00:02,748 - __main__ - INFO - \u2705 Lista simplificada salva em: simple_pairs_list.json
+2026-02-26 06:00:02,748 - __main__ - INFO - \u2705 An�lise di�ria conclu�da com sucesso!
+2026-02-26 06:00:02,748 - __main__ - INFO - \U0001f4cb O rob� XP3 PRO agora usar� os pares selecionados para opera��o
+
+2026-02-26 06:00:02,768 - __main__ - INFO - ✅ Análise diária concluída com sucesso!
+2026-02-26 11:00:11,292 - __main__ - INFO - 🚀 Iniciando análise diária...
+2026-02-26 11:00:11,784 - __main__ - INFO - 📊 Saída da análise:
+
+============================================================
+🧠 ANÁLISE DIÁRIA XP3 PRO v5.0
+============================================================
+📅 Data: 2026-02-26T11:00:11.761009
+🌍 Sessão: London
+💡 Sentimento: Volatile
+
+🎯 PARES SELECIONADOS PARA HOJE (6):
+------------------------------------------------------------
+1. EURAUD | Bearish | Score: 51.3 | ATR: 157.7 pips
+   💪 Força Relativa: 8.4 | Base: -2.8 | Quote: 5.6
+   📋 Motivo: Trend Score: 51.3 | Direction: Bearish
+
+2. CADJPY | Bearish | Score: 50.3 | ATR: 132.7 pips
+   💪 Força Relativa: 6.5 | Base: -0.5 | Quote: 6.1
+   📋 Motivo: Trend Score: 50.3 | Direction: Bearish
+
+3. EURJPY | Bearish | Score: 45.4 | ATR: 76.2 pips
+   💪 Força Relativa: 8.9 | Base: -2.8 | Quote: 6.1
+   📋 Motivo: Trend Score: 45.4 | Direction: Bearish
+
+4. GBPJPY | Bearish | Score: 43.6 | ATR: 121.4 pips
+   💪 Força Relativa: 5.4 | Base: 0.7 | Quote: 6.1
+   📋 Motivo: Trend Score: 43.6 | Direction: Bearish
+
+5. AUDUSD | Bullish | Score: 43.5 | ATR: 63.3 pips
+   💪 Força Relativa: 6.0 | Base: 5.6 | Quote: -0.4
+   📋 Motivo: Trend Score: 43.5 | Direction: Bullish
+
+6. USDJPY | Bearish | Score: 43.2 | ATR: 169.3 pips
+   💪 Força Relativa: 6.5 | Base: -0.4 | Quote: 6.1
+   📋 Motivo: Trend Score: 43.2 | Direction: Bearish
+
+============================================================
+📊 Total analisado: 23 pares
+🚫 Evitados por notícias: 0 pares
+============================================================
+
+2026-02-26 11:00:11,785 - __main__ - ERROR - ⚠️ Erros da análise:
+2026-02-26 11:00:11,757 - __main__ - INFO - \U0001f680 Iniciando Analisador Di�rio XP3 PRO v5.0
+2026-02-26 11:00:11,759 - __main__ - INFO - \U0001f680 Iniciando an�lise di�ria XP3 PRO v5.0
+2026-02-26 11:00:11,760 - __main__ - INFO - \U0001f4c5 Data: 2026-02-26 11:00:11
+2026-02-26 11:00:11,760 - __main__ - INFO - \U0001f50d Iniciando an�lise di�ria de mercado...
+2026-02-26 11:00:11,760 - __main__ - INFO - \U0001f4ca Analisando sentimento de mercado...
+2026-02-26 11:00:11,760 - __main__ - INFO - \U0001f4a1 Sentimento detectado: Risk-On
+2026-02-26 11:00:11,760 - __main__ - INFO - \U0001f4aa Analisando for�a relativa das moedas...
+2026-02-26 11:00:11,760 - __main__ - INFO - \U0001f4c8 Analisando for�a de tend�ncia dos pares...
+2026-02-26 11:00:11,760 - __main__ - INFO - \u2705 Selecionados 6 pares para opera��o
+2026-02-26 11:00:11,761 - __main__ - INFO - \U0001f4ca An�lise completa gerada com sucesso!
+2026-02-26 11:00:11,762 - __main__ - INFO - \u2705 An�lise salva em: daily_selected_pairs.json
+2026-02-26 11:00:11,764 - __main__ - INFO - \u2705 Lista simplificada salva em: simple_pairs_list.json
+2026-02-26 11:00:11,764 - __main__ - INFO - \u2705 An�lise di�ria conclu�da com sucesso!
+2026-02-26 11:00:11,764 - __main__ - INFO - \U0001f4cb O rob� XP3 PRO agora usar� os pares selecionados para opera��o
+
+2026-02-26 11:00:11,785 - __main__ - INFO - ✅ Análise diária concluída com sucesso!

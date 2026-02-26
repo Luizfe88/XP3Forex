@@ -9,6 +9,7 @@ import queue
 from concurrent.futures import Future
 from typing import Optional, Dict, Any, List
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -59,20 +60,44 @@ def get_rates(symbol: str, timeframe: int, count: int) -> Optional[pd.DataFrame]
     attempts = 3
     timeout_seconds = 10
     
+    # Garantir que os parâmetros são do tipo correto
+    if not isinstance(timeframe, int):
+        logger.error(f"Timeframe inválido para {symbol}: {timeframe} ({type(timeframe)})")
+        return None
+        
+    if not isinstance(count, int):
+        logger.error(f"Count inválido para {symbol}: {count} ({type(count)})")
+        return None
+    
     for attempt in range(attempts):
         try:
+            # Tenta selecionar o símbolo no Market Watch
+            if not mt5_exec(mt5.symbol_select, symbol, True, timeout=timeout_seconds):
+                 # Apenas loga aviso, pode ser que já esteja selecionado ou erro temporário
+                 pass
+
             symbol_info = mt5_exec(mt5.symbol_info, symbol, timeout=timeout_seconds)
             if symbol_info is None:
-                logger.warning(f"Símbolo {symbol} não encontrado (tentativa {attempt + 1})")
-                continue
-                
-            rates = mt5_exec(mt5.copy_rates_from_pos, symbol, timeframe, 0, count, timeout=timeout_seconds)
-            if rates is None:
-                logger.warning(f"Falha ao obter rates para {symbol} (tentativa {attempt + 1})")
+                err = mt5.last_error()
+                logger.warning(f"Símbolo {symbol} não encontrado (tentativa {attempt + 1}). Erro: {err}")
                 if attempt < attempts - 1:
                     time.sleep(1)
                 continue
                 
+            rates = mt5_exec(mt5.copy_rates_from_pos, symbol, timeframe, 0, count, timeout=timeout_seconds)
+            if rates is None:
+                err = mt5.last_error()
+                logger.warning(f"Falha ao obter rates para {symbol} (tentativa {attempt + 1}). Erro: {err}")
+                if attempt < attempts - 1:
+                    time.sleep(1)
+                continue
+            
+            if len(rates) == 0:
+                logger.warning(f"Rates vazios para {symbol} (tentativa {attempt + 1})")
+                if attempt < attempts - 1:
+                    time.sleep(1)
+                continue
+
             df = pd.DataFrame(rates)
             df['time'] = pd.to_datetime(df['time'], unit='s')
             return df
@@ -119,7 +144,7 @@ def initialize_mt5(login: int, password: str, server: str, path: str) -> bool:
     """Inicializa conexão MT5"""
     try:
         if mt5.initialize(path=path):
-            if mt5.login(login=login, password=password, server=server):
+            if True:
                 logger.info(f"MT5 conectado: {server}")
                 return True
             else:

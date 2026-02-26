@@ -9579,3 +9579,37 @@
 2026-02-16 07:08:34,769 | WATCHDOG | ✅ Bot iniciado em nova janela (PID: 19600)
 2026-02-16 07:08:34,770 | WATCHDOG |    ➜ O painel colorido do XP3 PRO aparece na janela nova!
 2026-02-16 07:08:34,771 | WATCHDOG | ✅ Bot reiniciado com sucesso
+2026-02-26 18:07:58,242 | WATCHDOG | 🛡️ XP3 Forex Watchdog Iniciado
+2026-02-26 18:07:58,244 | WATCHDOG | 🚀 Iniciando bot: C:\Users\luizf\AppData\Local\Programs\Python\Python313\python.exe src/run_bot.py --config config\config.json
+2026-02-26 18:07:58,255 | WATCHDOG | ✅ Bot iniciado com PID: 15312
+2026-02-26 18:08:08,290 | WATCHDOG | 🛑 Bot parou normalmente (exit code 0). Reiniciando em 5 segundos...
+2026-02-26 18:08:13,472 | WATCHDOG | 🚀 Iniciando bot: C:\Users\luizf\AppData\Local\Programs\Python\Python313\python.exe src/run_bot.py --config config\config.json
+2026-02-26 18:08:13,923 | WATCHDOG | ✅ Bot iniciado com PID: 12908
+2026-02-26 18:08:24,168 | WATCHDOG | 🛑 Watchdog interrompido pelo usuário.
+2026-02-26 18:08:41,029 | WATCHDOG | 🛡️ XP3 Forex Watchdog Iniciado
+2026-02-26 18:08:41,030 | WATCHDOG | 🚀 Iniciando bot: C:\Users\luizf\AppData\Local\Programs\Python\Python313\python.exe src/run_bot.py --config config\config.json
+2026-02-26 18:08:41,065 | WATCHDOG | ✅ Bot iniciado com PID: 14888
+2026-02-26 18:08:43,830 | WATCHDOG | 🛑 Bot parou normalmente (exit code 0). Reiniciando em 5 segundos...
+2026-02-26 18:08:48,831 | WATCHDOG | 🚀 Iniciando bot: C:\Users\luizf\AppData\Local\Programs\Python\Python313\python.exe src/run_bot.py --config config\config.json
+2026-02-26 18:08:48,844 | WATCHDOG | ✅ Bot iniciado com PID: 17576
+2026-02-26 18:08:51,865 | WATCHDOG | 🛑 Bot parou normalmente (exit code 0). Reiniciando em 5 segundos...
+2026-02-26 18:08:56,870 | WATCHDOG | 🚀 Iniciando bot: C:\Users\luizf\AppData\Local\Programs\Python\Python313\python.exe src/run_bot.py --config config\config.json
+2026-02-26 18:08:56,875 | WATCHDOG | ✅ Bot iniciado com PID: 16428
+2026-02-26 18:08:59,465 | WATCHDOG | 🛑 Bot parou normalmente (exit code 0). Reiniciando em 5 segundos...
+2026-02-26 18:09:01,014 | WATCHDOG | 🛑 Watchdog interrompido pelo usuário.
+2026-02-26 18:26:08,225 | WATCHDOG | 🛡️ XP3 Forex Watchdog Iniciado
+2026-02-26 18:26:08,227 | WATCHDOG | 🚀 Iniciando bot: C:\Users\luizf\AppData\Local\Programs\Python\Python313\python.exe src/run_bot.py --config config\config.json
+2026-02-26 18:26:08,238 | WATCHDOG | ✅ Bot iniciado com PID: 18444
+2026-02-26 18:26:56,230 | WATCHDOG | 🛑 Watchdog interrompido pelo usuário.
+2026-02-26 18:28:07,649 | WATCHDOG | 🛡️ XP3 Forex Watchdog Iniciado
+2026-02-26 18:28:07,650 | WATCHDOG | 🚀 Iniciando bot: C:\Users\luizf\AppData\Local\Programs\Python\Python313\python.exe src/run_bot.py --config config\config.json
+2026-02-26 18:28:07,664 | WATCHDOG | ✅ Bot iniciado com PID: 7940
+2026-02-26 18:29:14,453 | WATCHDOG | 🛑 Watchdog interrompido pelo usuário.
+2026-02-26 18:30:22,213 | WATCHDOG | 🛡️ XP3 Forex Watchdog Iniciado
+2026-02-26 18:30:22,217 | WATCHDOG | 🚀 Iniciando bot: C:\Users\luizf\AppData\Local\Programs\Python\Python313\python.exe src/run_bot.py --config config\config.json
+2026-02-26 18:30:22,237 | WATCHDOG | ✅ Bot iniciado com PID: 15748
+2026-02-26 18:32:20,929 | WATCHDOG | 🛑 Watchdog interrompido pelo usuário.
+2026-02-26 18:33:49,355 | WATCHDOG | 🛡️ XP3 Forex Watchdog Iniciado
+2026-02-26 18:33:49,356 | WATCHDOG | 🚀 Iniciando bot: C:\Users\luizf\AppData\Local\Programs\Python\Python313\python.exe src/run_bot.py --config config\config.json
+2026-02-26 18:33:49,368 | WATCHDOG | ✅ Bot iniciado com PID: 10700
+2026-02-26 18:34:14,323 | WATCHDOG | 🛑 Watchdog interrompido pelo usuário.
