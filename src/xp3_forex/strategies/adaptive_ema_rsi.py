@@ -485,15 +485,34 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             
             # Spread
             info = get_symbol_info(symbol)
-            spread_points = info.spread if info else 0
+            spread_points = info.get('spread', 0) if info else 0
             pip_size = get_pip_size(symbol)
             if pip_size == 0: pip_size = 0.0001
             
         except Exception as e:
             return Panel(Text(f"Erro ao calcular indicadores: {e}", style="bold red")), 0.0, str(e)
 
-        # Determinar Direção Base (Tendência)
-        is_buy = ema_fast > ema_slow
+            # Determinar Direção Base (Tendência)
+        # BUGFIX: Use logic identical to analyze()
+        # Se regime for strong_uptrend, esperamos BUY
+        # Se regime for strong_downtrend, esperamos SELL
+        # Se regime for high_vol/ranging, depende do crossover
+        
+        # Recalculate crossovers same as analyze()
+        crossed_up = (df[f'ema_fast'].iloc[-2] <= df[f'ema_slow'].iloc[-2]) and \
+                         (ema_fast > ema_slow)
+        crossed_down = (df[f'ema_fast'].iloc[-2] >= df[f'ema_slow'].iloc[-2]) and \
+                           (ema_fast < ema_slow)
+
+        # Determine signal direction being analyzed based on regime/conditions
+        # Default to trend direction, but refine
+        is_buy = ema_fast > ema_slow # Default trend based
+        
+        if regime.name == "strong_uptrend":
+            is_buy = True
+        elif regime.name == "strong_downtrend":
+            is_buy = False
+        
         direction = "BUY" if is_buy else "SELL"
 
         # 2. Avaliação de Condições
@@ -510,8 +529,9 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 status_icon = "✅"
                 style = "green"
             else:
-                status_icon = "❌" if "Stop" not in explanation else "⚠️" 
-                style = "red" if not "quase" in missing_msg.lower() else "yellow"
+                # Crucial: Mark as Fail
+                status_icon = "❌" 
+                style = "red"
             
             conditions.append({
                 "name": name,
@@ -528,58 +548,72 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         price_vs_fast_pips = (current_price - ema_fast) / pip_size
         
         if is_buy:
+            # Condition 1: EMA Fast > EMA Slow (Trend)
             trend_ok = ema_fast > ema_slow
-            add_cond("EMA Fast cruzou acima da Slow", 
+            add_cond("EMA Fast > Slow", 
                      f"{ema_fast:.5f}", 
                      f"> {ema_slow:.5f}", 
                      trend_ok, 
-                     "Início de tendência de alta confirmada", 
-                     f"Fast abaixo da Slow por {-ema_diff_pips:.1f} pips" if not trend_ok else "")
-                     
-            price_ok = current_price > ema_fast
-            add_cond("Preço acima da EMA Fast",
-                     f"{current_price:.5f}",
-                     f"> {ema_fast:.5f}",
-                     price_ok,
-                     "Precisa de um pequeno movimento a favor",
-                     f"+{abs(price_vs_fast_pips):.1f} pips" if not price_ok else "")
+                     "Tendência de alta confirmada", 
+                     f"Invertido por {-ema_diff_pips:.1f} pips" if not trend_ok else "")
+            
+            # Condition 2: Trigger (Crossover OR Pullback)
+            # Logic from analyze(): (crossed_up or (current_price > ema_fast and rsi < 50))
+            is_crossover = crossed_up
+            is_pullback = (current_price > ema_fast and rsi < 50)
+            trigger_ok = is_crossover or is_pullback
+            
+            # For report display, we show what matched or what is missing
+            if is_crossover:
+                 add_cond("Gatilho de Entrada", "Crossover", "Crossover ou Pullback", True, "Cruzamento de alta detectado", "")
+            elif is_pullback:
+                 add_cond("Gatilho de Entrada", "Pullback", "Crossover ou Pullback", True, "Pullback na tendência", "")
+            else:
+                 # Show what failed
+                 add_cond("Gatilho de Entrada", "Nenhum", "Crossover ou Pullback (RSI<50)", False, "Aguardando sinal", "Sem Crossover e RSI alto")
 
-            # RSI
+            # Condition 3: RSI Filter
             rsi_target = regime.rsi_buy
             rsi_ok = rsi > rsi_target
-            add_cond(f"RSI acima do nível dinâmico",
+            add_cond(f"RSI Filtro (> {rsi_target})",
                      f"{rsi:.1f}",
                      f"> {rsi_target}",
                      rsi_ok,
-                     "Momentum ainda um pouco fraco",
-                     f"+{rsi_target - rsi:.1f} pontos" if not rsi_ok else "")
+                     "Momentum suficiente",
+                     f"RSI muito baixo (-{rsi_target - rsi:.1f})" if not rsi_ok else "")
 
         else: # SELL
+            # Condition 1: EMA Fast < EMA Slow (Trend)
             trend_ok = ema_fast < ema_slow
-            add_cond("EMA Fast cruzou abaixo da Slow", 
+            add_cond("EMA Fast < Slow", 
                      f"{ema_fast:.5f}", 
                      f"< {ema_slow:.5f}", 
                      trend_ok, 
-                     "Início de tendência de baixa confirmada", 
-                     f"Fast acima da Slow por {ema_diff_pips:.1f} pips" if not trend_ok else "")
+                     "Tendência de baixa confirmada", 
+                     f"Invertido por {ema_diff_pips:.1f} pips" if not trend_ok else "")
 
-            price_ok = current_price < ema_fast
-            add_cond("Preço abaixo da EMA Fast",
-                     f"{current_price:.5f}",
-                     f"< {ema_fast:.5f}",
-                     price_ok,
-                     "Precisa de um pequeno movimento a favor",
-                     f"+{abs(price_vs_fast_pips):.1f} pips" if not price_ok else "")
+            # Condition 2: Trigger (Crossover OR Pullback)
+            # Logic from analyze(): (crossed_down or (current_price < ema_fast and rsi > 50))
+            is_crossover = crossed_down
+            is_pullback = (current_price < ema_fast and rsi > 50)
+            trigger_ok = is_crossover or is_pullback
+            
+            if is_crossover:
+                 add_cond("Gatilho de Entrada", "Crossover", "Crossover ou Pullback", True, "Cruzamento de baixa detectado", "")
+            elif is_pullback:
+                 add_cond("Gatilho de Entrada", "Pullback", "Crossover ou Pullback", True, "Pullback na tendência", "")
+            else:
+                 add_cond("Gatilho de Entrada", "Nenhum", "Crossover ou Pullback (RSI>50)", False, "Aguardando sinal", "Sem Crossover e RSI baixo")
 
-            # RSI
+            # Condition 3: RSI Filter
             rsi_target = regime.rsi_sell
             rsi_ok = rsi < rsi_target
-            add_cond(f"RSI abaixo do nível dinâmico",
+            add_cond(f"RSI Filtro (< {rsi_target})",
                      f"{rsi:.1f}",
                      f"< {rsi_target}",
                      rsi_ok,
-                     "Momentum ainda um pouco fraco",
-                     f"+{rsi - rsi_target:.1f} pontos" if not rsi_ok else "")
+                     "Momentum suficiente",
+                     f"RSI muito alto (+{rsi - rsi_target:.1f})" if not rsi_ok else "")
 
         # B. Força da Tendência (ADX)
         adx_ok = adx > 25

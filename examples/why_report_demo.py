@@ -175,14 +175,12 @@ class MockCache:
 import xp3_forex.utils.mt5_utils
 from dataclasses import dataclass
 
-@dataclass
-class SymbolInfo:
-    spread: int = 12
-    point: float = 0.00001
-    trade_tick_value: float = 1.0
-
 def mock_get_symbol_info(symbol):
-    return SymbolInfo()
+    return {
+        'spread': 12,
+        'point': 0.00001,
+        'trade_tick_value': 1.0
+    }
 
 xp3_forex.utils.mt5_utils.get_symbol_info = mock_get_symbol_info
 

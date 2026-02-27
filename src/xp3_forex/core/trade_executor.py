@@ -237,18 +237,29 @@ class TradeExecutor:
                     self.consecutive_failures = 0 # Reset failures
                     return result.order
                     
-                # Erros recuperáveis (Timeout, Requote)
-                elif result.retcode in [mt5.TRADE_RETCODE_TIMEOUT, mt5.TRADE_RETCODE_REQUOTE, 10004]:
-                    logger.warning(f"⚠️ Erro temporário ({result.retcode}). Retentando {attempt+1}/2...")
-                    time.sleep(1.5)
-                    # Refresh prices before retry?
+                # Erros recuperáveis (Timeout, Requote, Invalid Price)
+                # Adicionado 10015 (Invalid Price) que acontece em fast moves
+                # Adicionado 10027 (AutoTrading Disabled by Client) para logar melhor
+                # Adicionado 10009 (Done) para garantir
+                elif result.retcode in [mt5.TRADE_RETCODE_TIMEOUT, mt5.TRADE_RETCODE_REQUOTE, 10004, 10015, 10021, 10016]:
+                    logger.warning(f"⚠️ Erro temporário ({result.retcode} - {result.comment}). Retentando {attempt+1}/2...")
+                    time.sleep(1.0 + (attempt * 0.5))
+                    
+                    # Refresh prices before retry
                     tick = symbol_manager.get_tick(resolved_symbol)
                     if tick:
                         request['price'] = tick.ask if order_type == "BUY" else tick.bid
+                        request['sl'] = float(signal.stop_loss) # Mantém SL original
+                        request['tp'] = float(signal.take_profit) # Mantém TP original
                     continue
                     
                 else:
-                    logger.error(f"❌ order_send FALHOU | Retcode: {result.retcode} | Comment: {result.comment} | Symbol: {resolved_symbol}")
+                    logger.error(f"❌ order_send FALHOU | Retcode: {result.retcode} ({result.comment}) | Symbol: {resolved_symbol}")
+                    
+                    # Se for erro de volume (Invalid Volume), logar detalhes
+                    if result.retcode == 10014:
+                         logger.error(f"Volume inválido: {request['volume']}")
+                         
                     self.handle_failure()
                     return None
             
