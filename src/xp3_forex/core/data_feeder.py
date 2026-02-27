@@ -5,7 +5,7 @@ import logging
 import pandas as pd
 from typing import List, Tuple, Dict
 from ..utils.mt5_utils import get_rates
-from .symbol_manager import SymbolManager
+from ..mt5.symbol_manager import SymbolManager
 
 logger = logging.getLogger(__name__)
 

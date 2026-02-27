@@ -1,6 +1,7 @@
 import argparse
 import sys
 import os
+import time
 import signal
 import logging
 from pathlib import Path
@@ -72,8 +73,11 @@ def run_bot(args):
                 
     except KeyboardInterrupt:
         print("\n👋 Encerrado pelo usuário.")
+        if bot: bot.stop()
+        sys.exit(0)
     except Exception as e:
         logger.exception(f"Erro fatal durante execução: {e}")
+        if bot: bot.stop()
         sys.exit(1)
 
 def run_monitor(args):
@@ -106,26 +110,21 @@ def init_project(args):
         print("✅ Arquivo .env criado com configurações padrão.")
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="XP3 PRO FOREX - CLI de Gerenciamento Institucional",
-        prog="xp3-forex"
-    )
-    parser.add_argument("--version", action="version", version="XP3 PRO FOREX v5.0.0")
-    
+    parser = argparse.ArgumentParser(description="XP3 PRO FOREX CLI")
     subparsers = parser.add_subparsers(dest="command", help="Comandos disponíveis")
     
-    # Command: run
-    run_parser = subparsers.add_parser("run", help="Inicia o robô de trading")
-    run_parser.add_argument("--mode", choices=["live", "demo"], default="demo", help="Modo de operação (default: demo)")
-    run_parser.add_argument("--symbols", type=str, help="Override lista de símbolos (ex: EURUSD,GBPUSD)")
+    # Run Bot
+    bot_parser = subparsers.add_parser("run", help="Inicia o bot")
+    bot_parser.add_argument("--mode", choices=["paper", "live"], default="paper", help="Modo de execução")
+    bot_parser.add_argument("--symbols", help="Lista de símbolos (override .env)")
     
-    # Command: monitor
-    monitor_parser = subparsers.add_parser("monitor", help="Inicia o monitor de logs/saúde")
+    # Monitor
+    monitor_parser = subparsers.add_parser("monitor", help="Inicia o monitor")
     
-    # Command: init
-    init_parser = subparsers.add_parser("init", help="Inicializa configuração do projeto")
-    init_parser.add_argument("--force", action="store_true", help="Sobrescreve arquivos existentes")
-
+    # Init
+    init_parser = subparsers.add_parser("init", help="Inicializa projeto")
+    init_parser.add_argument("--force", action="store_true", help="Forçar sobrescrita")
+    
     args = parser.parse_args()
     
     if args.command == "run":
@@ -136,7 +135,6 @@ def main():
         init_project(args)
     else:
         parser.print_help()
-        sys.exit(1)
 
 if __name__ == "__main__":
     main()

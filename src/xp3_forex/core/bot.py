@@ -36,6 +36,7 @@ import numpy as np
 import pandas as pd
 
 from .settings import settings
+from .models import TradeSignal, Position
 from ..utils.mt5_utils import *
 from ..utils.indicators import *
 from ..utils.calculations import *
@@ -45,38 +46,12 @@ from ..utils.data_utils import *
 from ..mt5.symbol_manager import SymbolManager
 from .health_monitor import HealthMonitor
 from .data_feeder import DataFeeder
+from .rate_cache import RateCache
+from ..strategies.adaptive_ema_rsi import AdaptiveEmaRsiStrategy
 
 logger = logging.getLogger("XP3_BOT")
 
 SHUTDOWN_EVENT = Event()
-
-@dataclass
-class TradeSignal:
-    """Represents a trading signal"""
-    symbol: str
-    order_type: str  # "BUY" or "SELL"
-    entry_price: float
-    stop_loss: float
-    take_profit: float
-    volume: float
-    confidence: float
-    reason: str
-    timestamp: datetime = field(default_factory=datetime.now)
-
-@dataclass
-class Position:
-    """Represents an open position"""
-    symbol: str
-    order_type: str
-    volume: float
-    entry_price: float
-    current_price: float
-    stop_loss: float
-    take_profit: float
-    profit: float
-    pips: float
-    open_time: datetime
-    magic_number: int
 
 class XP3Bot:
     """Main bot class"""
@@ -98,6 +73,7 @@ class XP3Bot:
         # Initialize Core Components
         self.symbol_manager = SymbolManager()
         self.data_queue = queue.Queue(maxsize=100)
+        self.cache = RateCache()
         
         # Circuit Breaker & Risk Config
         self.circuit_breaker = defaultdict(int)
@@ -112,30 +88,48 @@ class XP3Bot:
         self.health_monitor = HealthMonitor(self)
         self.data_feeder = DataFeeder(self.data_queue, self.symbols, self.timeframes, self)
         
+        # Strategy
+        self.strategy = AdaptiveEmaRsiStrategy(self)
+        
         logger.info(f"🚀 XP3 PRO FOREX BOT v5.0 INSTITUCIONAL Inicializado")
         logger.info(f"Symbols: {self.symbols}")
         
     def setup_logging(self):
-        """Setup logging configuration"""
+        """Setup logging configuration with 3-hour rotation"""
         log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
         
         # Create logs directory
         settings.LOGS_DIR.mkdir(parents=True, exist_ok=True)
         
-        # Configure logging
-        logging.basicConfig(
-            level=log_level,
-            format="%(asctime)s | %(levelname)-8s | %(name)-12s | %(message)s",
-            handlers=[
-                logging.StreamHandler(sys.stdout),
-                logging.handlers.RotatingFileHandler(
-                    settings.get_log_file(),
-                    maxBytes=50 * 1024 * 1024,
-                    backupCount=3,
-                    encoding="utf-8"
-                )
-            ]
+        # Configure logging with TimedRotatingFileHandler
+        # Rotate every 3 hours ('H', interval=3)
+        # Keep backup for 7 days (8 backups per day * 7 days = 56)
+        
+        formatter = logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)-12s | %(message)s")
+        
+        # Root Logger config
+        root_logger = logging.getLogger()
+        root_logger.setLevel(log_level)
+        
+        # Clear existing handlers to avoid duplicates
+        if root_logger.hasHandlers():
+            root_logger.handlers.clear()
+            
+        # Console Handler
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(formatter)
+        root_logger.addHandler(console_handler)
+        
+        # File Handler (Timed Rotation)
+        file_handler = logging.handlers.TimedRotatingFileHandler(
+            filename=settings.get_log_file(),
+            when='H',
+            interval=3,
+            backupCount=56, # 7 days worth of logs
+            encoding='utf-8'
         )
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
     
     def initialize_mt5(self) -> bool:
         """Initialize MT5 connection"""
@@ -164,78 +158,18 @@ class XP3Bot:
                     logger.warning(f"Circuit Breaker ATIVO para {symbol} (Falhas: {self.circuit_breaker[symbol]}). Trading pausado.")
                 return None
 
-            # 2. Spread Check
-            symbol_info = get_symbol_info(symbol)
-            if symbol_info:
-                spread = symbol_info.get('spread', 0)
-                if spread > self.MAX_SPREAD:
-                    logger.info(f"Spread alto para {symbol}: {spread} > {self.MAX_SPREAD}. Ignorando.")
-                    return None
+            # 2. Spread Check (Silent & Smart)
+            # Use SymbolManager's silent check
+            if not self.symbol_manager.check_spread(symbol):
+                # Log handled internally by check_spread (silent or summary)
+                return None
 
             if df is None or len(df) < 50:
                 logger.warning(f"Dados insuficientes para {symbol}")
                 return None
             
-            # Calculate indicators
-            df['ema_fast'] = calculate_ema(df['close'], EMA_FAST_PERIOD)
-            df['ema_slow'] = calculate_ema(df['close'], EMA_SLOW_PERIOD)
-            df['rsi'] = calculate_rsi(df['close'], RSI_PERIOD)
-            df['adx'] = calculate_adx(df['high'], df['low'], df['close'], ADX_PERIOD)
-            df['atr'] = calculate_atr(df['high'], df['low'], df['close'], ATR_PERIOD)
-            
-            # Get current price
-            current_price = df['close'].iloc[-1]
-            
-            # Get symbol configuration
-            symbol_config = ELITE_CONFIG.get(symbol, {})
-            adx_threshold = symbol_config.get("adx_threshold", 25)
-            rsi_oversold = symbol_config.get("rsi_oversold", 30)
-            rsi_overbought = symbol_config.get("rsi_overbought", 70)
-            
-            # Generate signals
-            signal = None
-            
-            # BUY signal
-            if (df['ema_fast'].iloc[-1] > df['ema_slow'].iloc[-1] and
-                df['adx'].iloc[-1] > adx_threshold and
-                df['rsi'].iloc[-1] < rsi_overbought and
-                df['close'].iloc[-1] > df['ema_fast'].iloc[-1]):
-                
-                sl, tp = calculate_sl_tp(symbol, current_price, "BUY", df['atr'].iloc[-1])
-                volume = calculate_lot_size(symbol, 100, 20)  # Exemplo: risco $100, SL 20 pips
-                
-                signal = TradeSignal(
-                    symbol=symbol,
-                    order_type="BUY",
-                    entry_price=current_price,
-                    stop_loss=sl,
-                    take_profit=tp,
-                    volume=volume,
-                    confidence=0.75,
-                    reason=f"XP3 v4.2 - ADX: {df['adx'].iloc[-1]:.1f}, RSI: {df['rsi'].iloc[-1]:.1f}"
-                )
-            
-            # SELL signal
-            elif (df['ema_fast'].iloc[-1] < df['ema_slow'].iloc[-1] and
-                  df['adx'].iloc[-1] > adx_threshold and
-                  df['rsi'].iloc[-1] > rsi_oversold and
-                  df['close'].iloc[-1] < df['ema_fast'].iloc[-1]):
-                
-                sl, tp = calculate_sl_tp(symbol, current_price, "SELL", df['atr'].iloc[-1])
-                volume = calculate_lot_size(symbol, 100, 20)  # Exemplo: risco $100, SL 20 pips
-                
-                signal = TradeSignal(
-                    symbol=symbol,
-                    order_type="SELL",
-                    entry_price=current_price,
-                    stop_loss=sl,
-                    take_profit=tp,
-                    volume=volume,
-                    confidence=0.75,
-                    reason=f"XP3 v4.2 - ADX: {df['adx'].iloc[-1]:.1f}, RSI: {df['rsi'].iloc[-1]:.1f}"
-                )
-            
-            return signal
+            # Use Strategy to Analyze
+            return self.strategy.analyze(symbol, timeframe, df)
             
         except Exception as e:
             logger.error(f"Erro ao analisar {symbol}: {e}")
@@ -251,12 +185,14 @@ class XP3Bot:
                     return False
                 
                 # Check max positions
-                if len(self.positions) >= self.config.get("trading", {}).get("max_positions", 5):
+                if len(self.positions) >= settings.MAX_POSITIONS:
                     logger.info("Máximo de posições atingido")
                     return False
                 
                 # Execute trade logic here
                 logger.info(f"Executando trade: {signal.symbol} {signal.order_type} @ {signal.entry_price}")
+                
+                initial_sl_dist = abs(signal.entry_price - signal.stop_loss)
                 
                 # Create position
                 position = Position(
@@ -270,13 +206,15 @@ class XP3Bot:
                     profit=0,
                     pips=0,
                     open_time=signal.timestamp,
-                    magic_number=12345
+                    magic_number=settings.MAGIC_NUMBER,
+                    initial_sl_dist=initial_sl_dist,
+                    partial_taken=False
                 )
                 
                 self.positions[signal.symbol] = position
                 self.signals.append(signal)
                 
-                # Save to database
+                # Save to database (Placeholder)
                 trade_data = {
                     'symbol': signal.symbol,
                     'order_type': signal.order_type,
@@ -286,7 +224,7 @@ class XP3Bot:
                     'take_profit': signal.take_profit,
                     'entry_time': signal.timestamp.isoformat(),
                     'status': 'open',
-                    'magic_number': 12345,
+                    'magic_number': settings.MAGIC_NUMBER,
                     'comment': signal.reason
                 }
                 save_trade(trade_data)
@@ -318,23 +256,62 @@ class XP3Bot:
                     
                     if position.order_type == "BUY":
                         position.pips = (current_price - position.entry_price) / point
+                        profit_r = (current_price - position.entry_price) / position.initial_sl_dist if position.initial_sl_dist > 0 else 0
                     else:
                         position.pips = (position.entry_price - current_price) / point
+                        profit_r = (position.entry_price - current_price) / position.initial_sl_dist if position.initial_sl_dist > 0 else 0
                     
                     position.profit = position.pips * self.symbol_manager.get_tick_value(symbol)
                     
+                    # --- MANAGEMENT ---
+                    
+                    # 1. Partial Take Profit (1.5R)
+                    if not position.partial_taken and profit_r >= 1.5:
+                        logger.info(f"Taking Partial Profit (1.5R) for {symbol}")
+                        # Close 40%
+                        # Implementation Note: In real MT5, we would order_close_partial. 
+                        # Here we simulate by reducing volume.
+                        position.volume *= 0.6 # Remaining 60%
+                        position.partial_taken = True
+                    
+                    # 2. Trailing Stop (2xATR)
+                    # We use initial_sl_dist as approximation for 2xATR
+                    ts_dist = position.initial_sl_dist 
+                    
+                    if position.order_type == "BUY":
+                        new_sl = current_price - ts_dist
+                        if new_sl > position.stop_loss:
+                            position.stop_loss = new_sl
+                            logger.debug(f"Trailing SL moved to {new_sl} for {symbol}")
+                    else:
+                        new_sl = current_price + ts_dist
+                        if new_sl < position.stop_loss:
+                            position.stop_loss = new_sl
+                            logger.debug(f"Trailing SL moved to {new_sl} for {symbol}")
+
+                    # --- CHECK CLOSURE ---
+
                     # Check if position should be closed
                     if (position.order_type == "BUY" and current_price <= position.stop_loss) or \
                        (position.order_type == "SELL" and current_price >= position.stop_loss):
                         # Stop loss hit
                         logger.info(f"Stop loss atingido para {symbol}")
                         closed_positions.append(symbol)
+                        # Update Daily Stats
+                        if position.profit > 0:
+                            self.strategy.daily_stats["wins"] += 1
+                        else:
+                            self.strategy.daily_stats["losses"] += 1
+                        self.strategy.daily_stats["profit"] += position.profit
                         
                     elif (position.order_type == "BUY" and current_price >= position.take_profit) or \
                          (position.order_type == "SELL" and current_price <= position.take_profit):
                         # Take profit hit
                         logger.info(f"Take profit atingido para {symbol}")
                         closed_positions.append(symbol)
+                        # Update Daily Stats
+                        self.strategy.daily_stats["wins"] += 1
+                        self.strategy.daily_stats["profit"] += position.profit
                 
                 # Remove closed positions
                 for symbol in closed_positions:
@@ -343,6 +320,14 @@ class XP3Bot:
                         
         except Exception as e:
             logger.error(f"Erro ao atualizar posições: {e}")
+
+    def close_all_positions(self):
+        """Close all open positions (Kill Switch)"""
+        with self.lock:
+            for symbol in list(self.positions.keys()):
+                logger.warning(f"Closing {symbol} due to Kill Switch")
+                del self.positions[symbol]
+            logger.info("All positions closed.")
     
     def consumer_loop(self):
         """Consumes market data from queue and processes strategy"""
@@ -384,6 +369,29 @@ class XP3Bot:
         logger.info("▶️ Trading RETOMADO")
         self.is_trading_active = True
 
+    def initialize_market_data(self) -> List[str]:
+        """Validate symbols and initialize market data"""
+        logger.info("🔄 Inicializando Filtro de Símbolos Institucional...")
+        
+        # Use SymbolManager's smart filter
+        valid_symbols = self.symbol_manager.get_tradable_symbols()
+        
+        if not valid_symbols:
+            logger.error("❌ Nenhum símbolo válido encontrado após filtragem!")
+            return []
+            
+        logger.info(f"✅ Filtro concluído: {len(valid_symbols)} símbolos aprovados para trading.")
+        logger.debug(f"Símbolos ativos: {valid_symbols}")
+        
+        # Update bot symbols list
+        self.symbols = valid_symbols
+        
+        # Also update DataFeeder if it was already initialized with old list
+        if hasattr(self, 'data_feeder'):
+            self.data_feeder.symbols = self.symbols
+        
+        return valid_symbols
+
     def start(self):
         """Start the bot"""
         try:
@@ -394,94 +402,29 @@ class XP3Bot:
                 logger.error("Falha ao conectar ao MT5")
                 return False
             
+            # Initialize Market Data (Apply Filters)
+            if not self.initialize_market_data():
+                logger.error("Falha ao inicializar dados de mercado. Abortando.")
+                return False
+
             self.is_connected = True
             self.is_trading_active = True
             
-            # Initialize database
-            init_database()
-            
-            # Initialize Market Data (Validate symbols)
-            validated_symbols = initialize_market_data(self.symbols)
-            if not validated_symbols:
-                logger.error("Nenhum símbolo válido encontrado! Abortando.")
-                return False
-                
-            self.symbols = validated_symbols
-            self.data_feeder.symbols = self.symbols
-            logger.info(f"Símbolos validados para trading: {self.symbols}")
-            
             # Start Threads
             self.health_monitor.start()
-            self.data_feeder.start()
             
-            # Start Consumer Loop (in a thread or main thread?)
-            # Usually main thread can be the consumer or just wait.
-            # Let's put consumer in a thread so main can handle signals/UI if needed
-            self.consumer_thread = threading.Thread(target=self.consumer_loop, name="ConsumerLoop", daemon=True)
-            self.consumer_thread.start()
+            # Start Feeder Thread
+            feeder_thread = threading.Thread(target=self.data_feeder.run, daemon=True)
+            feeder_thread.start()
             
-            self.is_running = True
-            logger.info("✅ Bot iniciado com sucesso")
+            # Start Consumer Loop (Main Thread or Separate)
+            # If running as daemon or service, this might block.
+            # In CLI mode, we usually loop.
+            self.consumer_loop()
             
-            # Keep main thread alive
-            try:
-                while self.is_running and not SHUTDOWN_EVENT.is_set():
-                    time.sleep(1)
-            except KeyboardInterrupt:
-                logger.info("Interrupção do teclado detectada")
-                self.stop()
-                
-        except Exception as e:
-            logger.error(f"Erro ao iniciar bot: {e}")
-            return False
-    
-    def stop(self):
-        """Stop the bot"""
-        try:
-            logger.info("🛑 Parando XP3 PRO FOREX BOT")
-            self.is_running = False
+        except KeyboardInterrupt:
+            logger.info("🛑 Parando bot...")
             SHUTDOWN_EVENT.set()
-            
-            # Stop feeder
-            if hasattr(self, 'data_feeder'):
-                self.data_feeder.stop()
-            
-            # Stop monitor
-            if hasattr(self, 'health_monitor'):
-                self.health_monitor.stop()
-            
-            # Shutdown MT5 worker
-            mt5_shutdown_worker()
-            
-            # Shutdown MT5
-            mt5.shutdown()
-            
-            logger.info("✅ Bot parado com sucesso")
-            
         except Exception as e:
-            logger.error(f"Erro ao parar bot: {e}")
-
-def signal_handler(signum, frame):
-    """Handle shutdown signals"""
-    logger.info(f"Sinal {signum} recebido, encerrando...")
-    SHUTDOWN_EVENT.set()
-
-# Register signal handlers
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
-
-def main():
-    """Main function"""
-    try:
-        # Create bot instance
-        bot = XP3Bot()
-        
-        # Start the bot
-        bot.start()
-        
-    except Exception as e:
-        logger.error(f"Erro fatal: {e}")
-        traceback.print_exc()
-
-if __name__ == "__main__":
-    main()
+            logger.critical(f"Erro fatal: {e}")
+            traceback.print_exc()

@@ -85,6 +85,10 @@ class Settings(BaseSettings):
     # 2. TRADING CONFIG
     # ===========================
     SYMBOLS: str = Field(default="EURUSD,GBPUSD,USDJPY,XAUUSD", description="Lista de símbolos (separados por vírgula)")
+    SYMBOL_WHITELIST: str = Field(
+        default="EURUSD,GBPUSD,USDJPY,AUDUSD,USDCAD,NZDUSD,EURGBP,EURJPY,GBPJPY,USDCHF",
+        description="Whitelist de símbolos permitidos"
+    )
     TIMEFRAMES: str = Field(default="15,60,240", description="Lista de timeframes em minutos (ex: 15,60)")
     MAGIC_NUMBER: int = Field(default=123456, description="Magic Number para ordens")
     
@@ -96,12 +100,21 @@ class Settings(BaseSettings):
     # ===========================
     # 3. RISK MANAGEMENT
     # ===========================
-    RISK_PER_TRADE: float = Field(default=1.0, description="% do saldo por trade (ex: 1.0 para 1%)")
+    RISK_PER_TRADE: float = Field(default=0.5, description="% do saldo por trade (ex: 0.5 para 0.5%)")
     MAX_POSITIONS: int = Field(default=5, description="Máximo de posições simultâneas")
-    MAX_DAILY_LOSS_PERCENT: float = Field(default=5.0, description="Perda máxima diária (%)")
+    MAX_DAILY_LOSS_PERCENT: float = Field(default=3.0, description="Perda máxima diária (%)")
+    KILL_SWITCH_DD_PCT: float = Field(default=0.05, description="Kill Switch se DD Global > X% (0.05 = 5%)")
+    
+    # Spread Thresholds (Points)
+    MAX_SPREAD_MAJORS: int = Field(default=30, description="Max spread for Majors/Minors (points)")
+    MAX_SPREAD_EXOTICS: int = Field(default=500, description="Max spread for Exotics (points)")
+    MAX_SPREAD_INDICES: int = Field(default=1000, description="Max spread for Indices (points)")
+    MAX_SPREAD_CRYPTO: int = Field(default=3000, description="Max spread for Crypto (points)")
+    MAX_SPREAD_METALS: int = Field(default=100, description="Max spread for Metals (points)")
+    
     MAX_WEEKLY_LOSS_PERCENT: float = Field(default=10.0, description="Perda máxima semanal (%)")
     MAX_MONTHLY_LOSS_PERCENT: float = Field(default=15.0, description="Perda máxima mensal (%)")
-    MAX_SPREAD_PIPS: float = Field(default=3.0, description="Spread máximo permitido (pips)")
+    MAX_SPREAD_PIPS: float = Field(default=3.0, description="Spread máximo permitido (pips) - Deprecated, use Points")
     MAX_SLIPPAGE: int = Field(default=3, description="Slippage máximo (points)")
     MAX_ORDERS_PER_SYMBOL: int = Field(default=1, description="Máximo de ordens abertas por símbolo")
     
