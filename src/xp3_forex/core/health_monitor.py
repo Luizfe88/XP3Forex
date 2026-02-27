@@ -3,6 +3,7 @@ import time
 import logging
 import MetaTrader5 as mt5
 from ..utils.mt5_utils import mt5_exec
+from .settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -49,25 +50,38 @@ class HealthMonitor(threading.Thread):
             self.bot.is_connected = False
             self.bot.pause_trading()
             
-        # Tenta reconectar
-        logger.info("Tentando reconexão...")
-        # A lógica de reconexão pode envolver mt5.shutdown() e mt5.initialize()
-        # Mas mt5_utils.initialize_mt5 já faz isso.
-        # Vamos tentar re-inicializar usando a config do bot
-        try:
-            mt5_config = self.bot.config.get("mt5", {})
-            from ..utils.mt5_utils import initialize_mt5
-            if initialize_mt5(
-                mt5_config.get("login"),
-                mt5_config.get("password"),
-                mt5_config.get("server"),
-                mt5_config.get("path")
-            ):
-                logger.info("Reconexão bem sucedida!")
-            else:
-                logger.error("Falha na reconexão.")
-        except Exception as e:
-            logger.error(f"Erro ao tentar reconectar: {e}")
+        # Tenta reconectar com Exponential Backoff
+        logger.info("Tentando reconexão com Exponential Backoff...")
+        
+        max_retries = 5
+        base_delay = 5
+        
+        from ..utils.mt5_utils import initialize_mt5
+        
+        for attempt in range(max_retries):
+            try:
+                delay = base_delay * (2 ** attempt)
+                logger.info(f"Tentativa {attempt+1}/{max_retries} em {delay}s...")
+                time.sleep(delay)
+                
+                # Usa configurações do settings global
+                if initialize_mt5(
+                    settings.MT5_LOGIN,
+                    settings.MT5_PASSWORD,
+                    settings.MT5_SERVER,
+                    settings.MT5_PATH
+                ):
+                    logger.info("✅ Reconexão bem sucedida!")
+                    self.bot.is_connected = True
+                    self.bot.resume_trading()
+                    return
+                else:
+                    logger.warning(f"Falha na reconexão (Tentativa {attempt+1})")
+                    
+            except Exception as e:
+                logger.error(f"Erro ao tentar reconectar: {e}")
+                
+        logger.critical("❌ Falha definitiva na reconexão após várias tentativas.")
 
     def stop(self):
         self.running = False

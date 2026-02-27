@@ -182,5 +182,13 @@ class SymbolManager:
         if self._failures.get(symbol, 0) > 0:
             self._failures[symbol] = 0
 
+    def report_success(self, symbol: str):
+        """Public wrapper for resetting failure count"""
+        self._reset_failure(symbol)
+
+    def report_failure(self, symbol: str):
+        """Public wrapper for recording failure"""
+        self._record_failure(symbol)
+
 # Global Instance
 symbol_manager = SymbolManager()

@@ -20,6 +20,11 @@ _mt5_queue = queue.Queue()
 _mt5_worker_started = False
 _mt5_worker_thread = None
 
+# Cache global simples para Rates
+_rates_cache = {}
+_rates_cache_lock = threading.RLock()
+CACHE_TTL = 5.0  # segundos
+
 # Mapeamento de Timeframes (Inteiro Config -> Constante MT5)
 TIMEFRAME_MAP = {
     1: mt5.TIMEFRAME_M1,
@@ -148,8 +153,16 @@ def ensure_symbol_ready(symbol: str, timeout: int = 15) -> bool:
 
 def get_rates(symbol: str, timeframe: int, count: int) -> Optional[pd.DataFrame]:
     """
-    Obtém dados históricos de forma robusta com retry logic e mapeamento de timeframe.
+    Obtém dados históricos de forma robusta com retry logic, mapeamento de timeframe e CACHE (TTL).
     """
+    # 1. Check Cache
+    cache_key = (symbol, timeframe, count)
+    with _rates_cache_lock:
+        if cache_key in _rates_cache:
+            ts, df = _rates_cache[cache_key]
+            if time.time() - ts < CACHE_TTL:
+                return df.copy()
+
     attempts = 6 # Aumentado conforme solicitado
     base_delay = 0.5
     
@@ -168,19 +181,19 @@ def get_rates(symbol: str, timeframe: int, count: int) -> Optional[pd.DataFrame]
                 sleep_time = base_delay * (2 ** attempt) + (np.random.random() * 0.5)
                 time.sleep(sleep_time)
 
-            # 1. Verifica/Seleciona Símbolo
+            # 2. Verifica/Seleciona Símbolo
             if attempt == 0: # Faz apenas na primeira ou se falhar muito
                 if not mt5_exec(mt5.symbol_select, symbol, True):
                      # Tenta resolver nome se não encontrado
                      pass
 
-            # 2. Check info (rápido)
+            # 3. Check info (rápido)
             info = mt5_exec(mt5.symbol_info, symbol)
             if info is None:
                 logger.warning(f"[{attempt+1}/{attempts}] Info não disponível para {symbol}")
                 continue
 
-            # 3. Request Data
+            # 4. Request Data
             start_t = time.time()
             rates = mt5_exec(mt5.copy_rates_from_pos, symbol, mt5_tf, 0, count)
             duration = time.time() - start_t
@@ -206,6 +219,10 @@ def get_rates(symbol: str, timeframe: int, count: int) -> Optional[pd.DataFrame]
             # Logging rico para performance (apenas debug/info se lento)
             if duration > 1.0:
                 logger.info(f"Slow rates fetch: {symbol} took {duration:.2f}s")
+            
+            # Update Cache
+            with _rates_cache_lock:
+                _rates_cache[cache_key] = (time.time(), df)
                 
             return df
             

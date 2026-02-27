@@ -99,6 +99,11 @@ class XP3Bot:
         self.symbol_manager = SymbolManager()
         self.data_queue = queue.Queue(maxsize=100)
         
+        # Circuit Breaker & Risk Config
+        self.circuit_breaker = defaultdict(int)
+        self.CIRCUIT_BREAKER_THRESHOLD = 5
+        self.MAX_SPREAD = getattr(settings, 'MAX_SPREAD', 50)  # Default 50 points
+        
         # Get configured symbols and timeframes
         self.symbols = settings.symbols_list
         self.timeframes = settings.timeframes_list
@@ -152,6 +157,21 @@ class XP3Bot:
     def analyze_symbol(self, symbol: str, timeframe: int, df: pd.DataFrame) -> Optional[TradeSignal]:
         """Analyze a symbol and generate trading signal using provided DataFrame"""
         try:
+            # 1. Circuit Breaker Check
+            if self.circuit_breaker[symbol] >= self.CIRCUIT_BREAKER_THRESHOLD:
+                # Log esporádico para não floodar
+                if np.random.random() < 0.05:
+                    logger.warning(f"Circuit Breaker ATIVO para {symbol} (Falhas: {self.circuit_breaker[symbol]}). Trading pausado.")
+                return None
+
+            # 2. Spread Check
+            symbol_info = get_symbol_info(symbol)
+            if symbol_info:
+                spread = symbol_info.get('spread', 0)
+                if spread > self.MAX_SPREAD:
+                    logger.info(f"Spread alto para {symbol}: {spread} > {self.MAX_SPREAD}. Ignorando.")
+                    return None
+
             if df is None or len(df) < 50:
                 logger.warning(f"Dados insuficientes para {symbol}")
                 return None

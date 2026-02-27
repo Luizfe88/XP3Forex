@@ -1,5 +1,5 @@
 # =============================================================================
-# XP3 PRO FOREX - .gitignore Profissional
+# XP3 PRO FOREX - .gitignore Profissional (v5.0.1)
 # =============================================================================
 
 # PYTHON ====================================================================
@@ -32,6 +32,7 @@ nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
+.mypy_cache/
 
 # VIRTUAL ENVIRONMENTS ======================================================
 .env
@@ -54,37 +55,38 @@ venv.bak/
 *.iml
 
 # LOGS =====================================================================
-logs/
+logs/*
+!logs/.gitkeep
 *.log
 *.log.*
 *.json.log
-*.log.json
-log_analyzer.log
-daily_analysis.log
-dashboard_forex_institutional.log
-*.log.gz
 
-# ESTADOS E CONFIGURAÇÕES SENSÍVEIS ========================================
-config.json
-config_*.json
-!config_template.json
-.env
-.env.local
-.env.production
-.env.staging
-telegram.json
-mt5_credentials.json
-api_keys.json
-secrets.json
-
-# DADOS DE MERCADO ========================================================
-data/*.json
-data/*.db
-data/*.csv
-data/*.xlsx
+# DADOS DE RUNTIME E MERCADO ===============================================
+data/*
 !data/.gitkeep
-trades.db
-risk_engine.db
+*.db
+*.sqlite3
+*.csv
+*.xlsx
+*.json
+!pyproject.toml
+!src/**/*.json
+!tests/**/*.json
+!legacy/**/*.json
+
+# RELATÓRIOS ===============================================================
+reports/*
+!reports/.gitkeep
+ReportHistory-*.html
+ReportHistory-*.png
+
+# CONFIGURAÇÕES SENSÍVEIS ==================================================
+.env
+.env.*
+!.env.example
+config.json
+secrets.json
+mt5_credentials.json
 
 # BACKUPS E TEMPORÁRIOS ===================================================
 *.backup
@@ -98,79 +100,3 @@ risk_engine.db
 .DS_Store
 Thumbs.db
 desktop.ini
-.tmp.driveupload/
-
-# RELATÓRIOS E ANÁLISES ==================================================
-ReportHistory*
-*.html
-*.png
-!README_images/
-screenshots/
-charts/
-backtest_results/
-optimizer_output/
-analysis_logs/
-analysis_logs_test/
-
-# ARQUIVOS DE ESTADO DO BOT ==============================================
-bot_state.json
-bot_state.json.backup
-bot_heartbeat.timestamp
-equity_history.csv
-session_metrics_*.json
-asset_ranking_*.json
-asset_alerts_*.json
-selected_assets.json
-daily_selected_pairs.json
-daily_schedule.json
-
-# OPTIMIZAÇÃO E MACHINE LEARNING ========================================
-*.npy
-*.npz
-*.pkl
-*.pickle
-*.h5
-*.hdf5
-*.model
-*.onnx
-ml_history.json
-qtable.npy
-
-# DOWNLOADS E DADOS EXTERNOS ============================================
-dukascopy_data/
-downloads/
-mt5_data/
-
-# ARQUIVOS DE TESTE =====================================================
-test_*.py
-*_test.py
-*.test
-*.spec
-
-# DOCUMENTAÇÃO GERADA ==================================================
-docs/_build/
-docs/.doctrees/
-*.pdf
-!docs/*.pdf
-
-# MQL5 E ARQUIVOS DE TRADING ============================================
-*.ex5
-*.ex4
-*.mq5.protected
-*.mq4.protected
-*.set
-
-# ARQUIVOS DE CACHE ====================================================
-.cache/
-*.cache
-.cache.*
-.cache_*
-
-# ARQUIVOS DE LOCK ====================================================
-*.lock
-*.pid
-*.seed
-
-# =============================================================================
-# FIM DO .gitignore - XP3 PRO FOREX
-# =============================================================================
