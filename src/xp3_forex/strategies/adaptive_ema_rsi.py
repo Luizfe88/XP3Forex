@@ -7,8 +7,19 @@ import json
 import os
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from dataclasses import dataclass, field
+
+try:
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.text import Text
+    from rich import box
+    from rich.console import Console, Group
+    from rich.style import Style
+    HAS_RICH = True
+except ImportError:
+    HAS_RICH = False
 
 from .base_strategy import BaseStrategy
 from ..core.settings import settings, ELITE_CONFIG
@@ -432,3 +443,230 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 json.dump(data, f, indent=4)
         except Exception as e:
             logger.error(f"Failed to save stats: {e}")
+
+    def get_why_report(self, symbol: str) -> Tuple[Optional["Panel"], float]:
+        """
+        Gera um relatório visual (rich.Panel) explicando "Por Que Comprar?"
+        ou "Por Que Vender?" com base no regime atual e indicadores.
+        Retorna (Panel, confidence_score).
+        """
+        if not HAS_RICH:
+            return None, 0.0
+
+        # 1. Coleta de Dados
+        df = self.bot.cache.get_rates(symbol, 15, 300)
+        if df is None or len(df) < 200:
+            return Panel(Text(f"Dados insuficientes para {symbol}", style="bold red")), 0.0
+
+        regime = self.regimes.get(symbol, self.REGIME_RANGING)
+        
+        # Calcular Indicadores
+        fast_period = regime.ema_fast
+        slow_period = regime.ema_slow
+        
+        try:
+            # Pandas TA calc
+            df = df.copy()
+            df[f'ema_fast'] = ta.ema(df['close'], length=fast_period)
+            df[f'ema_slow'] = ta.ema(df['close'], length=slow_period)
+            df['rsi'] = ta.rsi(df['close'], length=14)
+            df.ta.adx(length=14, append=True)
+            df.ta.atr(length=14, append=True)
+            
+            current_price = df['close'].iloc[-1]
+            ema_fast = df[f'ema_fast'].iloc[-1]
+            ema_slow = df[f'ema_slow'].iloc[-1]
+            rsi = df['rsi'].iloc[-1]
+            adx = df['ADX_14'].iloc[-1] if 'ADX_14' in df else 0
+            atr = df['ATRr_14'].iloc[-1] if 'ATRr_14' in df else 0
+            
+            # Spread
+            info = get_symbol_info(symbol)
+            spread_points = info.spread if info else 0
+            pip_size = get_pip_size(symbol)
+            if pip_size == 0: pip_size = 0.0001
+            
+        except Exception as e:
+            return Panel(Text(f"Erro ao calcular indicadores: {e}", style="bold red")), 0.0
+
+        # Determinar Direção Base (Tendência)
+        is_buy = ema_fast > ema_slow
+        direction = "BUY" if is_buy else "SELL"
+
+        # 2. Avaliação de Condições
+        conditions = []
+        score = 0
+        max_score = 0
+        
+        # Helper para adicionar condição
+        def add_cond(name, current, target, status_bool, explanation, missing_msg):
+            nonlocal score, max_score
+            max_score += 1
+            if status_bool:
+                score += 1
+                status_icon = "✅"
+                style = "green"
+            else:
+                status_icon = "❌" if "Stop" not in explanation else "⚠️" 
+                style = "red" if not "quase" in missing_msg.lower() else "yellow"
+            
+            conditions.append({
+                "name": name,
+                "current": current,
+                "target": target,
+                "status": status_icon,
+                "missing": missing_msg,
+                "style": style,
+                "explanation": explanation
+            })
+
+        # A. Tendência (EMAs)
+        ema_diff_pips = (ema_fast - ema_slow) / pip_size
+        price_vs_fast_pips = (current_price - ema_fast) / pip_size
+        
+        if is_buy:
+            trend_ok = ema_fast > ema_slow
+            add_cond("EMA Fast cruzou acima da Slow", 
+                     f"{ema_fast:.5f}", 
+                     f"> {ema_slow:.5f}", 
+                     trend_ok, 
+                     "Início de tendência de alta confirmada", 
+                     f"Fast abaixo da Slow por {-ema_diff_pips:.1f} pips" if not trend_ok else "")
+                     
+            price_ok = current_price > ema_fast
+            add_cond("Preço acima da EMA Fast",
+                     f"{current_price:.5f}",
+                     f"> {ema_fast:.5f}",
+                     price_ok,
+                     "Precisa de um pequeno movimento a favor",
+                     f"+{abs(price_vs_fast_pips):.1f} pips" if not price_ok else "")
+
+            # RSI
+            rsi_target = regime.rsi_buy
+            rsi_ok = rsi > rsi_target
+            add_cond(f"RSI acima do nível dinâmico",
+                     f"{rsi:.1f}",
+                     f"> {rsi_target}",
+                     rsi_ok,
+                     "Momentum ainda um pouco fraco",
+                     f"+{rsi_target - rsi:.1f} pontos" if not rsi_ok else "")
+
+        else: # SELL
+            trend_ok = ema_fast < ema_slow
+            add_cond("EMA Fast cruzou abaixo da Slow", 
+                     f"{ema_fast:.5f}", 
+                     f"< {ema_slow:.5f}", 
+                     trend_ok, 
+                     "Início de tendência de baixa confirmada", 
+                     f"Fast acima da Slow por {ema_diff_pips:.1f} pips" if not trend_ok else "")
+
+            price_ok = current_price < ema_fast
+            add_cond("Preço abaixo da EMA Fast",
+                     f"{current_price:.5f}",
+                     f"< {ema_fast:.5f}",
+                     price_ok,
+                     "Precisa de um pequeno movimento a favor",
+                     f"+{abs(price_vs_fast_pips):.1f} pips" if not price_ok else "")
+
+            # RSI
+            rsi_target = regime.rsi_sell
+            rsi_ok = rsi < rsi_target
+            add_cond(f"RSI abaixo do nível dinâmico",
+                     f"{rsi:.1f}",
+                     f"< {rsi_target}",
+                     rsi_ok,
+                     "Momentum ainda um pouco fraco",
+                     f"+{rsi - rsi_target:.1f} pontos" if not rsi_ok else "")
+
+        # B. Força da Tendência (ADX)
+        adx_ok = adx > 25
+        add_cond("ADX confirma força",
+                 f"{adx:.1f}",
+                 "> 25",
+                 adx_ok,
+                 "Tendência precisa ficar mais forte",
+                 f"+{25 - adx:.1f}" if not adx_ok else "")
+
+        # C. Spread
+        spread_ok = spread_points < 30 
+        add_cond("Spread dentro do limite",
+                 f"{spread_points}",
+                 "< 30",
+                 spread_ok,
+                 "Liquidez excelente",
+                 "Spread alto!" if not spread_ok else "")
+
+        # D. Sessão
+        session_ok = self.is_london_ny_session()
+        add_cond("Sessão London/NY ativa",
+                 "Sim" if session_ok else "Não",
+                 "Sim",
+                 session_ok,
+                 "Melhor horário para operar",
+                 "Horário de baixa liquidez" if not session_ok else "")
+
+        # 3. Construção do Painel
+        confidence = (score / max_score) * 100 if max_score > 0 else 0
+        
+        # Cor do título baseada na confiança
+        if confidence >= 80:
+            title_color = "green"
+            conf_emoji = "🟢"
+        elif confidence >= 60:
+            title_color = "yellow"
+            conf_emoji = "🟡"
+        else:
+            title_color = "red"
+            conf_emoji = "🔴"
+            
+        title_text = f"🔵 POR QUE COMPRAR {symbol}?" if is_buy else f"🔴 POR QUE VENDER {symbol}?"
+        
+        # Tabela
+        table = Table(box=box.ROUNDED, show_header=True, header_style="bold white", expand=True)
+        table.add_column("Condição", style="cyan")
+        table.add_column("Valor Atual", justify="right")
+        table.add_column("Meta", justify="right")
+        table.add_column("Status", justify="center")
+        table.add_column("Quanto falta", style="yellow")
+        table.add_column("Explicação simples", style="italic")
+
+        missing_summary = []
+
+        for c in conditions:
+            table.add_row(
+                c["name"],
+                c["current"],
+                c["target"],
+                c["status"],
+                c["missing"],
+                c["explanation"]
+            )
+            if c["missing"]:
+                missing_summary.append(c["missing"])
+
+        # Resumo Textual Didático
+        if score == max_score:
+            summary = f"[bold green]SINAL PERFEITO![/] O {symbol} está alinhado para {direction}. Execução recomendada."
+        elif confidence > 60:
+            missing_text = ', '.join(missing_summary[:2])
+            summary = f"[bold yellow]QUASE LÁ![/] O EMA já deu o sinal, mas faltam detalhes: {missing_text}. Setup promissor se confirmar."
+        else:
+            summary = f"[bold red]AGUARDE.[/] O mercado ainda não confirmou a entrada em {symbol}."
+
+        # Painel Final
+        panel_content = Group(
+            Text(f"Confiança do sinal: {confidence:.0f}% {conf_emoji}", style=f"bold {title_color}"),
+            Text("Regime de Mercado: " + regime.description, style="italic dim"),
+            Text(""), 
+            table,
+            Text(""), 
+            Text("Resumo didático:", style="bold underline"),
+            Text.from_markup(summary)
+        )
+        
+        return Panel(
+            panel_content,
+            title=title_text,
+            border_style=title_color,
+            padding=(1, 2)
+        ), confidence

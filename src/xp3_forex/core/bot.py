@@ -35,6 +35,12 @@ import MetaTrader5 as mt5
 import numpy as np
 import pandas as pd
 
+try:
+    from rich.console import Console
+    HAS_RICH = True
+except ImportError:
+    HAS_RICH = False
+
 from .settings import settings
 from .models import TradeSignal, Position
 from ..utils.mt5_utils import *
@@ -90,6 +96,13 @@ class XP3Bot:
         
         # Strategy
         self.strategy = AdaptiveEmaRsiStrategy(self)
+
+        # Rich Console for Why Report
+        if HAS_RICH:
+            self.console = Console()
+        else:
+            self.console = None
+        self.last_report_time = 0
         
         logger.info(f"🚀 XP3 PRO FOREX BOT v5.0 INSTITUCIONAL Inicializado")
         logger.info(f"Symbols: {self.symbols}")
@@ -337,6 +350,38 @@ class XP3Bot:
             try:
                 # Update positions
                 self.update_positions()
+
+                # --- Periodic Why Report Scan (Visual) ---
+                if HAS_RICH and self.console and (time.time() - self.last_report_time > 60):
+                    self.last_report_time = time.time()
+                    if self.is_trading_active and self.symbols:
+                        # logger.info("🔍 Executando Scan Visual de Mercado (Why Report)...")
+                        
+                        # Use a separate thread or limit symbols to avoid blocking consumer loop too much
+                        # For now, let's just scan top 5 symbols or randomize
+                        # But user wants to see it working.
+                        
+                        signals_found = 0
+                        symbols_to_scan = self.symbols[:10] # Limit to first 10 for performance in loop
+                        
+                        # Only print header if we find something or once every few cycles
+                        # self.console.print("[dim]🔍 Escaneando mercado para oportunidades...[/]")
+                        
+                        self.console.print(f"[bold cyan]🔍 Iniciando análise visual de {len(symbols_to_scan)} símbolos...[/]")
+
+                        for symbol in symbols_to_scan:
+                            try:
+                                panel, conf = self.strategy.get_why_report(symbol)
+                                if panel and conf > 60:
+                                    self.console.print(panel)
+                                    signals_found += 1
+                            except Exception as e:
+                                # logger.error(f"Erro no Why Report para {symbol}: {e}")
+                                pass
+                        
+                        if signals_found == 0:
+                             # Exibir mensagem de progresso a cada X ciclos ou quando solicitado
+                             self.console.print(f"[dim]Scan concluído: Nenhum sinal >60% encontrado em {len(symbols_to_scan)} símbolos monitorados. Aguardando...[/]")
                 
                 # Process Data Queue
                 try:
