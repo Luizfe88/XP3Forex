@@ -43,6 +43,7 @@ except ImportError:
 
 from .settings import settings
 from .models import TradeSignal, Position
+from .trade_executor import trade_executor
 from ..utils.mt5_utils import *
 from ..utils.indicators import *
 from ..utils.calculations import *
@@ -114,10 +115,6 @@ class XP3Bot:
         # Create logs directory
         settings.LOGS_DIR.mkdir(parents=True, exist_ok=True)
         
-        # Configure logging with TimedRotatingFileHandler
-        # Rotate every 3 hours ('H', interval=3)
-        # Keep backup for 7 days (8 backups per day * 7 days = 56)
-        
         formatter = logging.Formatter("%(asctime)s | %(levelname)-8s | %(name)-12s | %(message)s")
         
         # Root Logger config
@@ -133,14 +130,29 @@ class XP3Bot:
         console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
         
-        # File Handler (Timed Rotation)
+        # File Handler (Timed Rotation 3h)
+        # Naming convention: logger-info-dd-mm-yy.txt (Base)
+        # However, TimedRotatingFileHandler appends suffix automatically (e.g., .2023-10-27_12-00)
+        # To strictly follow "creates a new one every 3h", we use 'H', interval=3.
+        # To control the filename format exactly, we need a custom namer or just accept the suffix.
+        # User requested: "logger-info-dd-mm-aa.txt"
+        
+        current_date = datetime.now().strftime("%d-%m-%y")
+        base_filename = settings.LOGS_DIR / f"logger-info-{current_date}.txt"
+        
         file_handler = logging.handlers.TimedRotatingFileHandler(
-            filename=settings.get_log_file(),
+            filename=base_filename,
             when='H',
             interval=3,
-            backupCount=56, # 7 days worth of logs
+            backupCount=56, # 7 days worth of logs (8 files per day)
             encoding='utf-8'
         )
+        
+        # Customize suffix to include time for clarity on rotation, though base name has date.
+        # If we want strictly new files with date in name, we might need to rely on the rotation suffix.
+        # Standard suffix is YYYY-MM-DD_HH-MM.
+        file_handler.suffix = "%Y-%m-%d_%H-%M.log"
+        
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
     
@@ -189,21 +201,37 @@ class XP3Bot:
             return None
     
     def execute_trade(self, signal: TradeSignal) -> bool:
-        """Execute a trade based on signal"""
+        """Execute a trade based on signal using TradeExecutor"""
         try:
             with self.lock:
+                # 1. Anti-Flood & Rate Limit (First line of defense)
+                # Check if we already tried this symbol recently (handled by TradeExecutor but good to check here too)
+                # Delegate entirely to TradeExecutor for consistency
+                
                 # Check if we already have a position for this symbol
                 if signal.symbol in self.positions:
-                    logger.info(f"Posição já existe para {signal.symbol}")
+                    # logger.info(f"Posição já existe para {signal.symbol}")
                     return False
                 
                 # Check max positions
                 if len(self.positions) >= settings.MAX_POSITIONS:
-                    logger.info("Máximo de posições atingido")
+                    # logger.info("Máximo de posições atingido")
                     return False
                 
-                # Execute trade logic here
-                logger.info(f"Executando trade: {signal.symbol} {signal.order_type} @ {signal.entry_price}")
+                # 2. Get Why Report for Logs (Institutional Requirement)
+                try:
+                    # Only fetch if we are actually going to trade
+                    # This adds a small overhead but ensures logs are rich
+                    _, _, why_log = self.strategy.get_why_report(signal.symbol)
+                    if why_log:
+                        logger.info(f"\n{why_log}")
+                except: pass
+
+                # 3. Delegate to TradeExecutor
+                ticket = trade_executor.execute_order(signal)
+                
+                if not ticket:
+                    return False
                 
                 initial_sl_dist = abs(signal.entry_price - signal.stop_loss)
                 
@@ -238,7 +266,8 @@ class XP3Bot:
                     'entry_time': signal.timestamp.isoformat(),
                     'status': 'open',
                     'magic_number': settings.MAGIC_NUMBER,
-                    'comment': signal.reason
+                    'comment': signal.reason,
+                    'ticket': ticket
                 }
                 save_trade(trade_data)
                 
@@ -371,10 +400,25 @@ class XP3Bot:
 
                         for symbol in symbols_to_scan:
                             try:
-                                panel, conf = self.strategy.get_why_report(symbol)
+                                panel, conf, log_str = self.strategy.get_why_report(symbol)
+                                
+                                # Log visual (Console)
                                 if panel and conf > 60:
                                     self.console.print(panel)
                                     signals_found += 1
+                                    
+                                # Log textual (Arquivo)
+                                if log_str and conf > 40: # Log mais permissivo para debug
+                                    logger.info(log_str)
+                                    
+                            except ValueError as e: # Handle unpack error if old version running
+                                try:
+                                    # Fallback for old signature
+                                    panel, conf = self.strategy.get_why_report(symbol)
+                                    if panel and conf > 60:
+                                        self.console.print(panel)
+                                        signals_found += 1
+                                except: pass
                             except Exception as e:
                                 # logger.error(f"Erro no Why Report para {symbol}: {e}")
                                 pass

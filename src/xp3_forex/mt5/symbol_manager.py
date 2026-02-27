@@ -74,13 +74,14 @@ class SymbolManager:
         candidate_symbols = settings.symbols_list
         
         # Se a whitelist estiver vazia ou tiver "ALL" ou "MARKET_WATCH", pega tudo do Market Watch
+        # MAS APLICA FILTRO FORTE DEPOIS
         if not candidate_symbols or "ALL" in candidate_symbols or "MARKET_WATCH" in candidate_symbols:
-            candidate_symbols = self._get_market_watch_symbols()
-        else:
-            # Se tiver whitelist explícita, adiciona também a whitelist hardcoded se a config permitir
-            # (Neste caso, vamos respeitar estritamente o settings.symbols_list se ele for explícito)
-            pass
-
+            # Em modo institucional, desencorajamos "ALL" para evitar lixo.
+            # Se for ALL, pegamos Market Watch mas aplicamos filtro de categorias estrito.
+            raw_symbols = self._get_market_watch_symbols()
+            # Pré-filtro para remover exóticos perigosos se não estiverem explicitamente permitidos
+            candidate_symbols = [s for s in raw_symbols if self._is_safe_category(s)]
+        
         # 2. Filtrar
         for symbol in candidate_symbols:
             resolved_name = self.resolve_name(symbol)
@@ -104,6 +105,12 @@ class SymbolManager:
             self._last_summary_log = now
             
         return tradable_symbols
+
+    def _is_safe_category(self, symbol: str) -> bool:
+        """Verifica se a categoria é segura para trading automático"""
+        category = self._categorize_symbol(symbol)
+        # Permite Majors, Metals e Indices principais. Bloqueia Exotics e Crypto por padrão se vier de ALL.
+        return category in ["major", "metal", "index"]
 
     def check_spread(self, symbol: str) -> bool:
         """

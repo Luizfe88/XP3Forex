@@ -99,8 +99,9 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         Detects market regime based on H1/M15 analysis.
         Re-evaluated every 5 minutes or new bar.
         """
-        # Using M15 for main regime detection as requested in "Objetivos"
+        # CRÍTICO: Usar cache para evitar requisição MT5 lenta
         df = self.bot.cache.get_rates(symbol, 15, 300)
+        
         if df is None or len(df) < 200:
             # logger.warning(f"Insufficient data for regime detection: {symbol}")
             return
@@ -444,19 +445,21 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         except Exception as e:
             logger.error(f"Failed to save stats: {e}")
 
-    def get_why_report(self, symbol: str) -> Tuple[Optional["Panel"], float]:
+    def get_why_report(self, symbol: str) -> Tuple[Optional["Panel"], float, str]:
         """
         Gera um relatório visual (rich.Panel) explicando "Por Que Comprar?"
         ou "Por Que Vender?" com base no regime atual e indicadores.
-        Retorna (Panel, confidence_score).
+        Retorna (Panel, confidence_score, log_string).
         """
         if not HAS_RICH:
-            return None, 0.0
+            return None, 0.0, ""
 
         # 1. Coleta de Dados
+        # CRÍTICO: Usar RateCache do Bot para evitar slow fetch
         df = self.bot.cache.get_rates(symbol, 15, 300)
+        
         if df is None or len(df) < 200:
-            return Panel(Text(f"Dados insuficientes para {symbol}", style="bold red")), 0.0
+            return Panel(Text(f"Dados insuficientes para {symbol}", style="bold red")), 0.0, ""
 
         regime = self.regimes.get(symbol, self.REGIME_RANGING)
         
@@ -487,7 +490,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             if pip_size == 0: pip_size = 0.0001
             
         except Exception as e:
-            return Panel(Text(f"Erro ao calcular indicadores: {e}", style="bold red")), 0.0
+            return Panel(Text(f"Erro ao calcular indicadores: {e}", style="bold red")), 0.0, str(e)
 
         # Determinar Direção Base (Tendência)
         is_buy = ema_fast > ema_slow
@@ -631,6 +634,13 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         table.add_column("Explicação simples", style="italic")
 
         missing_summary = []
+        
+        # Construção da String de Log Detalhada
+        log_lines = [
+            f"--- WHY REPORT: {symbol} ({direction}) ---",
+            f"Confiança: {confidence:.1f}%",
+            f"Regime: {regime.name}"
+        ]
 
         for c in conditions:
             table.add_row(
@@ -641,17 +651,25 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 c["missing"],
                 c["explanation"]
             )
+            
+            # Add to log
+            log_status = "OK" if c["status"] == "✅" else "FAIL"
+            log_lines.append(f"[{log_status}] {c['name']}: {c['current']} (Meta: {c['target']}) - {c['missing']}")
+            
             if c["missing"]:
                 missing_summary.append(c["missing"])
 
         # Resumo Textual Didático
         if score == max_score:
             summary = f"[bold green]SINAL PERFEITO![/] O {symbol} está alinhado para {direction}. Execução recomendada."
+            log_lines.append("RESULT: PERFECT SIGNAL")
         elif confidence > 60:
             missing_text = ', '.join(missing_summary[:2])
             summary = f"[bold yellow]QUASE LÁ![/] O EMA já deu o sinal, mas faltam detalhes: {missing_text}. Setup promissor se confirmar."
+            log_lines.append(f"RESULT: PROMISSING (Missing: {missing_text})")
         else:
             summary = f"[bold red]AGUARDE.[/] O mercado ainda não confirmou a entrada em {symbol}."
+            log_lines.append("RESULT: WAIT")
 
         # Painel Final
         panel_content = Group(
@@ -664,9 +682,11 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             Text.from_markup(summary)
         )
         
+        full_log_report = "\n".join(log_lines)
+        
         return Panel(
             panel_content,
             title=title_text,
             border_style=title_color,
             padding=(1, 2)
-        ), confidence
+        ), confidence, full_log_report
