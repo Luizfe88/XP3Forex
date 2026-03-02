@@ -45,6 +45,11 @@ class DataFeeder(threading.Thread):
                 if not self.symbol_manager.is_available(symbol):
                     continue
                 
+                # --- NOVO: Verificação de Spread em Tempo Real ---
+                # Se o spread estiver alto, pula a coleta de dados pesada (get_rates)
+                if not self.symbol_manager.check_spread(symbol):
+                    continue
+                
                 for tf in self.timeframes:
                     try:
                         # Coleta dados

@@ -61,25 +61,18 @@ class SymbolManager:
         
         logger.info("SymbolManager Singleton inicializado")
 
-    def get_tradable_symbols(self) -> List[str]:
+    def get_tradable_symbols(self, ignore_spread: bool = False) -> List[str]:
         """
         Retorna lista de símbolos negociáveis baseada na whitelist e filtro de spread.
         Loga resumo de símbolos ignorados periodicamente.
         """
         tradable_symbols = []
-        ignored_count = 0
         
         # 1. Obter lista candidata (Whitelist + Market Watch se configurado)
-        # Por padrão, usa a whitelist configurada no settings
         candidate_symbols = settings.symbols_list
         
-        # Se a whitelist estiver vazia ou tiver "ALL" ou "MARKET_WATCH", pega tudo do Market Watch
-        # MAS APLICA FILTRO FORTE DEPOIS
         if not candidate_symbols or "ALL" in candidate_symbols or "MARKET_WATCH" in candidate_symbols:
-            # Em modo institucional, desencorajamos "ALL" para evitar lixo.
-            # Se for ALL, pegamos Market Watch mas aplicamos filtro de categorias estrito.
             raw_symbols = self._get_market_watch_symbols()
-            # Pré-filtro para remover exóticos perigosos se não estiverem explicitamente permitidos
             candidate_symbols = [s for s in raw_symbols if self._is_safe_category(s)]
         
         # 2. Filtrar
@@ -87,11 +80,15 @@ class SymbolManager:
             resolved_name = self.resolve_name(symbol)
             if not resolved_name:
                 continue
-                
-            if self._check_spread_and_log(resolved_name):
+            
+            if ignore_spread:
+                tradable_symbols.append(resolved_name)
+                # Mantém o buffer para o log de resumo mesmo se ignorarmos o filtro agora
+                if not self._check_spread_and_log(resolved_name):
+                    self._ignored_symbols_buffer.add(resolved_name)
+            elif self._check_spread_and_log(resolved_name):
                 tradable_symbols.append(resolved_name)
             else:
-                ignored_count += 1
                 self._ignored_symbols_buffer.add(resolved_name)
 
         # 3. Log Summary a cada 5 minutos

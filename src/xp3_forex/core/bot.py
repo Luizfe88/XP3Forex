@@ -453,6 +453,13 @@ class XP3Bot:
                         if signals_found == 0:
                              # Exibir mensagem de progresso a cada X ciclos ou quando solicitado
                              self.console.print(f"[dim]Scan concluído: Nenhum sinal >60% encontrado em {len(symbols_to_scan)} símbolos monitorados. Aguardando...[/]")
+
+                # --- Periodic Symbol Refresh (Every 30m) ---
+                # Importante para redescobrir novos ativos que entraram no Market Watch se SYMBOLS=ALL
+                if time.time() - getattr(self, '_last_symbol_refresh', 0) > 1800:
+                    self._last_symbol_refresh = time.time()
+                    logger.info("🔄 Atualizando lista de símbolos candidatos...")
+                    self.initialize_market_data()
                 
                 # Process Data Queue
                 try:
@@ -492,8 +499,8 @@ class XP3Bot:
         """Validate symbols and initialize market data"""
         logger.info("🔄 Inicializando Filtro de Símbolos Institucional...")
         
-        # Use SymbolManager's smart filter
-        valid_symbols = self.symbol_manager.get_tradable_symbols()
+        # Use SymbolManager's smart filter - INICIALIZA COM TODOS (Spread check agora é no Feeder)
+        valid_symbols = self.symbol_manager.get_tradable_symbols(ignore_spread=True)
         
         if not valid_symbols:
             logger.error("❌ Nenhum símbolo válido encontrado após filtragem!")
