@@ -104,36 +104,46 @@ class TradeExecutor:
 
         return info
 
-    def can_trade(self, symbol: str) -> bool:
+    def can_trade(self, symbol: str, silent: bool = False) -> bool:
         """Verifica se pode operar (Rate Limit, Circuit Breaker, Max Trades, Margin)"""
         now = time.time()
 
         # 1. Global Circuit Breaker
         if now < self.circuit_breaker_until:
-            logger.warning(
-                f"🚫 Circuit Breaker ATIVO. Trading pausado por mais {self.circuit_breaker_until - now:.1f}s"
-            )
+            if not silent:
+                logger.warning(
+                    f"🚫 Circuit Breaker ATIVO. Trading pausado por mais {self.circuit_breaker_until - now:.1f}s"
+                )
             return False
+
+        # 0. DEBUG: FORCE EXECUTION BYPASS
+        if getattr(settings, "FORCE_EXECUTION", False):
+            if not silent:
+                logger.warning("🧪 FORCE_EXECUTION ATIVO: Ignorando filtros de sanidade!")
+            return True
 
         # 2. Account Health (NEW - CRITICAL)
         if self.mode in ["live", "demo"]:
             health = self.check_account_health()
             if not health["healthy"]:
-                logger.error(health["reason"])
+                if not silent:
+                    logger.error(health["reason"])
                 return False
 
         # 3. Symbol Cooldown
         if now - self.last_trade_attempt.get(symbol, 0) < self.COOLDOWN_SECONDS:
-            logger.warning(f"⏳ Cooldown ativo para {symbol}. Aguarde...")
+            if not silent:
+                logger.warning(f"⏳ Cooldown ativo para {symbol}. Aguarde...")
             return False
 
         # 4. Max Trades (Check MT5 positions)
         if self.mode in ["live", "demo"]:
             positions = mt5_exec(mt5.positions_total)
             if positions is not None and positions >= self.MAX_CONCURRENT_TRADES:
-                logger.warning(
-                    f"🚫 Limite de posições atingido ({positions}/{self.MAX_CONCURRENT_TRADES})"
-                )
+                if not silent:
+                    logger.warning(
+                        f"🚫 Limite de posições atingido ({positions}/{self.MAX_CONCURRENT_TRADES})"
+                    )
                 return False
 
         return True
@@ -232,21 +242,25 @@ class TradeExecutor:
             logger.error(f"❌ TRADE BLOQUEADO: Símbolo {symbol} não resolvido no MT5.")
             return None
 
-        tradable_symbols = symbol_manager.get_tradable_symbols()
-        if resolved_symbol not in tradable_symbols:
-            # Double check spread just in case list is stale
-            if not symbol_manager.check_spread(resolved_symbol):
-                logger.error(
-                    f"❌ TRADE BLOQUEADO: {resolved_symbol} rejeitado pelo filtro de spread."
+        # 0. DEBUG: FORCE EXECUTION BYPASS SPREAD/SYMBOL CHECK
+        if not getattr(settings, "FORCE_EXECUTION", False):
+            tradable_symbols = symbol_manager.get_tradable_symbols()
+            if resolved_symbol not in tradable_symbols:
+                # Double check spread just in case list is stale
+                if not symbol_manager.check_spread(resolved_symbol):
+                    logger.error(
+                        f"❌ TRADE BLOQUEADO: {resolved_symbol} rejeitado pelo filtro de spread."
+                    )
+                    return None
+
+            # Check if position exists
+            if mt5_exec(mt5.positions_get, symbol=resolved_symbol):
+                logger.warning(
+                    f"⚠️ Posição já existe para {resolved_symbol}. Ignorando sinal."
                 )
                 return None
-
-        # Check if position exists
-        if mt5_exec(mt5.positions_get, symbol=resolved_symbol):
-            logger.warning(
-                f"⚠️ Posição já existe para {resolved_symbol}. Ignorando sinal."
-            )
-            return None
+        else:
+            logger.warning(f"🧪 FORCE_EXECUTION: Ignorando filtros para {resolved_symbol}")
 
         # 2. Recalcular Lote (Position Sizing)
         # Ignora volume do sinal original se for absurdo
@@ -367,7 +381,10 @@ class TradeExecutor:
                 return None
 
             # Retry Logic
-            for attempt in range(3):
+            attempts = getattr(settings, "RETRY_ATTEMPTS", 3)
+            backoff_base = getattr(settings, "RETRY_BACKOFF", 1.0)
+
+            for attempt in range(attempts):
                 # Diagnóstico antes do envio (order_check revela o erro exato)
                 if attempt == 0:
                     check = mt5_exec(mt5.order_check, request=request, timeout=10)
@@ -376,7 +393,7 @@ class TradeExecutor:
                     logger.info(
                         f"📋 Order Request: {request['symbol']} {'BUY' if request['type'] == mt5.ORDER_TYPE_BUY else 'SELL'} "
                         f"Vol={request['volume']:.2f} Price={request['price']:.5f} "
-                        f"SL={request['sl']:.5f} TP={request['tp']:.5f}"
+                        f"SL={request['sl']:.5f} TP={request['tp']:.5f} | Filling={request['type_filling']}"
                     )
 
                     if check is not None:
@@ -395,7 +412,7 @@ class TradeExecutor:
                                 f"| ACCOUNT: Balance={account_info['balance']:.2f} Equity={account_info['equity']:.2f} "
                                 f"FL={margin_level_str} | Symbol trade_mode={sym_info.trade_mode if sym_info else 'N/A'}"
                             )
-                            # CRITICAL: Do not attempt order_send if order_check failed!
+                            # NO FORCE BYPASS for order_check: if check fails, send will definitely fail
                             self.handle_failure()
                             return None
                         else:
@@ -411,31 +428,33 @@ class TradeExecutor:
                         self.handle_failure()
                         return None
 
-                # Timeout maior para order_send (operação crítica)
+                # Envio real da ordem
                 result = mt5_exec(mt5.order_send, request=request, timeout=60)
 
                 if result is None:
                     last_err = mt5.last_error()
                     logger.error(
-                        f"❌ mt5.order_send retornou None | Tentativa {attempt + 1}/3 | last_error={last_err}"
+                        f"❌ mt5.order_send retornou None (Critical Timeout/Crash) | Tentativa {attempt + 1}/{attempts} | Last Error={last_err}"
                     )
-                    # Não desiste imediatamente: aguarda e tenta de novo
-                    if attempt < 2:
-                        time.sleep(2.0 * (attempt + 1))
+                    if attempt < (attempts - 1):
+                        wait_time = backoff_base * (2**attempt)
+                        logger.info(f"⏳ Aguardando {wait_time}s para retry...")
+                        time.sleep(wait_time)
                         # Atualizar preço antes de retentar
                         tick = symbol_manager.get_tick(resolved_symbol)
                         if tick:
-                            request["price"] = (
-                                tick.ask if order_type == "BUY" else tick.bid
-                            )
+                            request["price"] = tick.ask if order_type == "BUY" else tick.bid
                         continue
                     else:
                         self.handle_failure()
                         return None
 
+                # Log Completo do Resultado
+                logger.debug(f"🔍 Result Debug: {result._asdict() if hasattr(result, '_asdict') else str(result)}")
+
                 if result.retcode == mt5.TRADE_RETCODE_DONE:
                     logger.info(
-                        f"✅ ORDEM EXECUTADA com sucesso | Ticket: {result.order} | Preço: {result.price}"
+                        f"✅ ORDEM EXECUTADA com sucesso | Ticket: {result.order} | Preço: {result.price} | Comment: {result.comment}"
                     )
                     signal.entry_price = result.price  # Atualiza com preço real
                     self.consecutive_failures = 0  # Reset failures
@@ -445,23 +464,29 @@ class TradeExecutor:
                 elif result.retcode in [
                     mt5.TRADE_RETCODE_TIMEOUT,
                     mt5.TRADE_RETCODE_REQUOTE,
-                    10004,
-                    10015,
-                    10021,
-                    10016,
+                    mt5.TRADE_RETCODE_PRICE_OFF,
+                    mt5.TRADE_RETCODE_PRICE_CHANGED,
+                    10004, # Requote
+                    10015, # Invalid Price
+                    10021, # No Prices
+                    10016, # Invalid Stops
                 ]:
                     logger.warning(
-                        f"⚠️ Erro temporário ({result.retcode} - {result.comment}). Retentando {attempt + 1}/3..."
+                        f"⚠️ Erro recuperável ({result.retcode} - {result.comment}). Tentando {attempt + 1}/{attempts}..."
                     )
-                    time.sleep(1.0 + (attempt * 0.5))
+                    if attempt < (attempts - 1):
+                        wait_time = backoff_base * (attempt + 1)
+                        time.sleep(wait_time)
 
-                    # Refresh prices before retry
-                    tick = symbol_manager.get_tick(resolved_symbol)
-                    if tick:
-                        request["price"] = tick.ask if order_type == "BUY" else tick.bid
-                        request["sl"] = float(signal.stop_loss)  # Mantém SL original
-                        request["tp"] = float(signal.take_profit)  # Mantém TP original
-                    continue
+                        # Refresh prices before retry
+                        tick = symbol_manager.get_tick(resolved_symbol)
+                        if tick:
+                            request["price"] = tick.ask if order_type == "BUY" else tick.bid
+                        continue
+                    else:
+                        logger.error(f"❌ Falha persistente após {attempts} tentativas.")
+                        self.handle_failure()
+                        return None
 
                 else:
                     # Log detalhado para diagnóstico

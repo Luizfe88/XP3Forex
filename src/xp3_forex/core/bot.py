@@ -104,6 +104,7 @@ class XP3Bot:
         else:
             self.console = None
         self.last_report_time = 0
+        self.last_cooldown_log = {}  # Controle de log por símbolo
         
         logger.info(f"🚀 XP3 PRO FOREX BOT v5.0 INSTITUCIONAL Inicializado")
         logger.info(f"Symbols: {self.symbols}")
@@ -161,14 +162,30 @@ class XP3Bot:
         try:
             # Se já estiver conectado pelo HealthMonitor ou externo, retorna True
             if mt5.terminal_info() is not None:
+                term_info = mt5.terminal_info()
+                if not term_info.connected:
+                    logger.error("❌ MT5 detectado mas SEM CONEXÃO com o servidor.")
+                    return False
+                if not term_info.trade_allowed:
+                    logger.error("❌ MT5 detectado mas 'ALGO TRADING' está DESLIGADO no terminal.")
+                    return False
                 return True
-                
-            return initialize_mt5(
+
+            success = initialize_mt5(
                 settings.MT5_LOGIN,
                 settings.MT5_PASSWORD,
                 settings.MT5_SERVER,
                 settings.MT5_PATH
             )
+
+            if success:
+                term_info = mt5.terminal_info()
+                if term_info and not term_info.trade_allowed:
+                    logger.critical("⚠️ MT5 Conectado, mas o botão 'ALGO TRADING' está DESATIVADO!")
+                elif term_info:
+                    logger.info("✅ MT5 Conectado e Algo Trading habilitado.")
+
+            return success
         except Exception as e:
             logger.error(f"Erro ao inicializar MT5: {e}")
             return False
@@ -176,12 +193,16 @@ class XP3Bot:
     def analyze_symbol(self, symbol: str, timeframe: int, df: pd.DataFrame) -> Optional[TradeSignal]:
         """Analyze a symbol and generate trading signal using provided DataFrame"""
         try:
-            # 1. Circuit Breaker Check
-            if self.circuit_breaker[symbol] >= self.CIRCUIT_BREAKER_THRESHOLD:
-                # Log esporádico para não floodar
-                if np.random.random() < 0.05:
-                    logger.warning(f"Circuit Breaker ATIVO para {symbol} (Falhas: {self.circuit_breaker[symbol]}). Trading pausado.")
+            # 0. Cooldown / Sanity Check (FAIL FAST)
+            if not trade_executor.can_trade(symbol, silent=True):
+                # Log opcional limitado a 1x por minuto
+                now = time.time()
+                if now - self.last_cooldown_log.get(symbol, 0) > 60:
+                    logger.debug(f"Skipping {symbol}: Active Cooldown/Account Issue")
+                    self.last_cooldown_log[symbol] = now
                 return None
+
+            # 1. Circuit Breaker Check
 
             # 2. Spread Check (Silent & Smart)
             # Use SymbolManager's silent check
@@ -400,16 +421,22 @@ class XP3Bot:
 
                         for symbol in symbols_to_scan:
                             try:
+                                # FAIL FAST: Se o ativo estiver em cooldown, pula a geração do relatório pesado
+                                if not trade_executor.can_trade(symbol, silent=True):
+                                    continue
+
                                 panel, conf, log_str = self.strategy.get_why_report(symbol)
                                 
                                 # Log visual (Console)
-                                if panel and conf > 60:
+                                if panel and conf >= 80:
                                     self.console.print(panel)
                                     signals_found += 1
                                     
                                 # Log textual (Arquivo)
-                                if log_str and conf > 40: # Log mais permissivo para debug
-                                    logger.info(log_str)
+                                # Apenas se for EXECUTE (conf >= 80) ou DEBUG_MODE
+                                if log_str:
+                                    if conf >= 80 or settings.DEBUG_MODE:
+                                        logger.info(log_str)
                                     
                             except ValueError as e: # Handle unpack error if old version running
                                 try:
@@ -445,6 +472,9 @@ class XP3Bot:
             except Exception as e:
                 logger.error(f"Erro no consumer_loop: {e}")
                 time.sleep(1)
+            
+            # CPU Respiro (Obrigatório)
+            time.sleep(1.0)
                 
         logger.info("🛑 Consumer Loop finalizado")
 

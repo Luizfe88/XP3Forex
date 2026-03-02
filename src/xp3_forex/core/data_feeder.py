@@ -6,6 +6,7 @@ import pandas as pd
 from typing import List, Tuple, Dict
 from ..utils.mt5_utils import get_rates
 from ..mt5.symbol_manager import SymbolManager
+from .trade_executor import trade_executor
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,11 @@ class DataFeeder(threading.Thread):
                 continue
                 
             for symbol in self.symbols:
-                # Verifica Circuit Breaker
+                # 0. FAIL FAST: Cooldown Check (Institutional)
+                if not trade_executor.can_trade(symbol, silent=True):
+                    continue
+
+                # Verifica Circuit Breaker (SymbolManager version)
                 if not self.symbol_manager.is_available(symbol):
                     continue
                 
@@ -62,8 +67,8 @@ class DataFeeder(threading.Thread):
                         logger.error(f"Erro no Data Feeder para {symbol}: {e}")
                         self.symbol_manager.report_failure(symbol)
             
-            # Pequena pausa para não saturar CPU se a lista for pequena
-            time.sleep(0.1)
+            # Pequena pausa para não saturar CPU (FAIL FAST)
+            time.sleep(1.0)
 
     def stop(self):
         self.running = False

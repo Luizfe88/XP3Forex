@@ -8,7 +8,7 @@
 import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
-from pydantic import Field, computed_field
+from pydantic import Field, computed_field, BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # ===========================
@@ -57,6 +57,15 @@ SYMBOL_MAP = {
     "USDCAD": {"type": "major", "volatility": "medium", "spread": "medium"}
 }
 
+class SessionMetricsConfig(BaseModel):
+    """Configuração de métricas alvo por sessão"""
+    name: str
+    start_time_utc: str  # Format "HH:MM"
+    end_time_utc: str    # Format "HH:MM"
+    min_profit_factor: float
+    min_win_rate: float
+    description: str
+
 class Settings(BaseSettings):
     """
     Configurações Centralizadas do XP3 PRO FOREX
@@ -92,16 +101,45 @@ class Settings(BaseSettings):
     TIMEFRAMES: str = Field(default="15,60,240", description="Lista de timeframes em minutos (ex: 15,60)")
     MAGIC_NUMBER: int = Field(default=123456, description="Magic Number para ordens")
     
-    # Sessões de Trading (Horário de Brasília)
+    # Sessões de Trading (Horário de Brasília/UTC)
     SERVER_OFFSET: int = Field(default=0, description="Diferença Horária: Servidor -> Local")
     GOLDEN_HOUR_START: str = "10:00"
     GOLDEN_HOUR_END: str = "14:00"
+    
+    # Session Definitions (UTC)
+    SESSION_ASIA: SessionMetricsConfig = SessionMetricsConfig(
+        name="ASIA",
+        start_time_utc="22:00",
+        end_time_utc="08:00",
+        min_profit_factor=1.2,
+        min_win_rate=0.65,
+        description="Baixa volatilidade, mercado de range (reversão à média)."
+    )
+    SESSION_LONDON: SessionMetricsConfig = SessionMetricsConfig(
+        name="LONDON",
+        start_time_utc="08:00",
+        end_time_utc="16:00",
+        min_profit_factor=1.8,
+        min_win_rate=0.50,
+        description="Alta liquidez, tendência e breakouts."
+    )
+    SESSION_NY: SessionMetricsConfig = SessionMetricsConfig(
+        name="NY",
+        start_time_utc="13:00",
+        end_time_utc="21:00",
+        min_profit_factor=2.0,
+        min_win_rate=0.55,
+        description="Altíssima volatilidade e notícias macro (Overlap Londres)."
+    )
     
     # ===========================
     # 3. RISK MANAGEMENT
     # ===========================
     RISK_PER_TRADE: float = Field(default=0.5, description="% do saldo por trade (ex: 0.5 para 0.5%)")
     MAX_LOTS_PER_TRADE: float = Field(default=1.0, description="Volume máximo por trade (lotes)")
+    FORCE_EXECUTION: bool = Field(default=False, description="Bypass filtros para testes (DEBUG ONLY)")
+    RETRY_ATTEMPTS: int = Field(default=5, description="Tentativas de envio de ordem")
+    RETRY_BACKOFF: float = Field(default=2.0, description="Backoff exponencial (segundos)")
     MAX_POSITIONS: int = Field(default=5, description="Máximo de posições simultâneas")
     MAX_DAILY_LOSS_PERCENT: float = Field(default=3.0, description="Perda máxima diária (%)")
     KILL_SWITCH_DD_PCT: float = Field(default=0.05, description="Kill Switch se DD Global > X% (0.05 = 5%)")
@@ -142,6 +180,7 @@ class Settings(BaseSettings):
     # 6. SYSTEM & LOGGING
     # ===========================
     XP3_ENV: str = Field(default="Production", description="Ambiente (Production, Development)")
+    DEBUG_MODE: bool = Field(default=False, description="Ativar logs detalhados (Why Report) para todos os estados")
     LOG_LEVEL: str = Field(default="INFO", description="Nível de log (DEBUG, INFO, WARNING, ERROR)")
     LOGS_DIR: Path = Field(default=Path("logs"), description="Diretório de logs")
     DATA_DIR: Path = Field(default=Path("data"), description="Diretório de dados")

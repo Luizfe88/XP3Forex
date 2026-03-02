@@ -27,6 +27,7 @@ from ..core.models import TradeSignal
 from ..utils.mt5_utils import get_symbol_info
 from ..utils.indicators import calculate_atr
 from ..utils.calculations import calculate_sl_tp, calculate_lot_size, get_pip_size
+from .session_analyzer import get_active_session_params, get_active_session_name
 
 logger = logging.getLogger("XP3.Strategy.AR-EMA-RSI")
 
@@ -158,10 +159,19 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         if not self.check_institutional_filters(symbol):
             return None
 
-        # 2. Prepare Data
-        # Ensure we have indicators for the specific regime
-        fast_period = regime.ema_fast
-        slow_period = regime.ema_slow
+        # 2. Get Session Optimized Parameters
+        session_params = get_active_session_params(symbol, datetime.utcnow())
+        
+        # 3. Prepare Data
+        # Base indicators from Regime, but allow Session Overrides
+        fast_period = session_params.get("ema_fast", regime.ema_fast)
+        slow_period = session_params.get("ema_slow", regime.ema_slow)
+        rsi_period = session_params.get("rsi_period", 14)
+        
+        # Strategy Logic with Session Thresholds
+        rsi_buy_thresh = session_params.get("rsi_buy", regime.rsi_buy)
+        rsi_sell_thresh = session_params.get("rsi_sell", regime.rsi_sell)
+        adx_thresh = session_params.get("adx_threshold", 25)
         
         # Recalculate specific EMAs for the current regime
         # Check if columns exist or recalc
@@ -171,7 +181,8 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         try:
             df[f'ema_fast'] = ta.ema(df['close'], length=fast_period)
             df[f'ema_slow'] = ta.ema(df['close'], length=slow_period)
-            df['rsi'] = ta.rsi(df['close'], length=14)
+            df['rsi'] = ta.rsi(df['close'], length=rsi_period)
+            df.ta.adx(length=14, append=True)
             
             # Check if indicators are valid
             if df[f'ema_fast'].iloc[-1] is None or df['rsi'].iloc[-1] is None:
@@ -181,6 +192,11 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             ema_fast = df[f'ema_fast'].iloc[-1]
             ema_slow = df[f'ema_slow'].iloc[-1]
             rsi = df['rsi'].iloc[-1]
+            adx = df['ADX_14'].iloc[-1]
+            
+            # ADX Filter from Session
+            if adx < adx_thresh:
+                return None
             
             # 3. Signal Logic
             signal_type = None
@@ -200,23 +216,23 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             # Conditions based on Regime
             if regime == self.REGIME_STRONG_UP:
                 # In strong uptrend, buy on dips or crossovers
-                if (crossed_up or (current_price > ema_fast and rsi < 50)) and rsi > regime.rsi_buy:
+                if (crossed_up or (current_price > ema_fast and rsi < 50)) and rsi > rsi_buy_thresh:
                     signal_type = "BUY"
                     
             elif regime == self.REGIME_STRONG_DOWN:
-                 if (crossed_down or (current_price < ema_fast and rsi > 50)) and rsi < regime.rsi_sell:
+                 if (crossed_down or (current_price < ema_fast and rsi > 50)) and rsi < rsi_sell_thresh:
                     signal_type = "SELL"
                     
             elif regime == self.REGIME_HIGH_VOL:
-                if crossed_up and rsi > regime.rsi_buy: 
+                if crossed_up and rsi > rsi_buy_thresh: 
                          signal_type = "BUY"
-                elif crossed_down and rsi < regime.rsi_sell:
+                elif crossed_down and rsi < rsi_sell_thresh:
                      signal_type = "SELL"
                      
             else: # Ranging
-                if crossed_up and rsi > regime.rsi_buy:
+                if crossed_up and rsi > rsi_buy_thresh:
                     signal_type = "BUY"
-                elif crossed_down and rsi < regime.rsi_sell:
+                elif crossed_down and rsi < rsi_sell_thresh:
                     signal_type = "SELL"
 
             # 4. Multi-Timeframe Confirmation (H1)
@@ -232,14 +248,17 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 if np.isnan(atr) or atr == 0:
                      atr = 0.0010 # Fallback
                      
-                sl_dist = 2.0 * atr
+                atr_mult_sl = session_params.get("atr_multiplier_sl", 2.0)
+                atr_mult_tp = session_params.get("atr_multiplier_tp", 3.0)
+                
+                sl_dist = atr_mult_sl * atr
                 
                 if signal_type == "BUY":
                     sl = current_price - sl_dist
-                    tp = current_price + (3.0 * sl_dist) 
+                    tp = current_price + (atr_mult_tp * atr) 
                 else:
                     sl = current_price + sl_dist
-                    tp = current_price - (3.0 * sl_dist)
+                    tp = current_price - (atr_mult_tp * atr)
                 
                 # Position Sizing (Risk %)
                 risk_amount = self.get_account_balance() * settings.RISK_PER_TRADE / 100.0
@@ -258,7 +277,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                     take_profit=tp,
                     volume=volume,
                     confidence=0.85,
-                    reason=f"{regime.name} | EMA({fast_period},{slow_period}) | RSI {rsi:.1f}"
+                    reason=f"{session_params.get('active_session', 'N/A')} | {regime.name} | EMA({fast_period},{slow_period}) | RSI {rsi:.1f}"
                 )
         except Exception as e:
             logger.error(f"Error analyzing {symbol}: {e}")
@@ -295,8 +314,9 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 # logger.info(f"Trade rejected for {symbol} due to high correlation")
                 return False
             
-        # Session Filter
-        if not self.is_london_ny_session():
+        # Session Filter (Session Analyzer identifies ASIA, LONDON, NY)
+        session = get_active_session_name(datetime.utcnow())
+        if session == "UNKNOWN":
             return False
             
         # News Filter
@@ -353,14 +373,10 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 
         return False
 
-    def is_london_ny_session(self) -> bool:
-        """
-        08:00 - 17:00 GMT
-        """
-        now_gmt = datetime.utcnow()
-        start = now_gmt.replace(hour=8, minute=0, second=0, microsecond=0)
-        end = now_gmt.replace(hour=17, minute=0, second=0, microsecond=0)
-        return start <= now_gmt <= end
+    def is_trading_session_active(self) -> bool:
+        """Verifica se alguma sessão principal está ativa via SessionAnalyzer"""
+        from .session_analyzer import get_active_session_name
+        return get_active_session_name(datetime.utcnow()) != "UNKNOWN"
 
     def is_high_impact_news_soon(self, symbol: str) -> bool:
         # Placeholder
@@ -462,17 +478,23 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             return Panel(Text(f"Dados insuficientes para {symbol}", style="bold red")), 0.0, ""
 
         regime = self.regimes.get(symbol, self.REGIME_RANGING)
+
+        # 2. Prepare Data & Session Params
+        session_params = get_active_session_params(symbol, datetime.utcnow())
+        active_sess = session_params.get("active_session", "UNKNOWN")
         
-        # Calcular Indicadores
-        fast_period = regime.ema_fast
-        slow_period = regime.ema_slow
+        # Parâmetros
+        fast_period = session_params.get("ema_fast", regime.ema_fast)
+        slow_period = session_params.get("ema_slow", regime.ema_slow)
+        rsi_period = session_params.get("rsi_period", 14)
+        adx_thresh = session_params.get("adx_threshold", 25)
         
         try:
             # Pandas TA calc
             df = df.copy()
             df[f'ema_fast'] = ta.ema(df['close'], length=fast_period)
             df[f'ema_slow'] = ta.ema(df['close'], length=slow_period)
-            df['rsi'] = ta.rsi(df['close'], length=14)
+            df['rsi'] = ta.rsi(df['close'], length=rsi_period)
             df.ta.adx(length=14, append=True)
             df.ta.atr(length=14, append=True)
             
@@ -573,7 +595,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                  add_cond("Gatilho de Entrada", "Nenhum", "Crossover ou Pullback (RSI<50)", False, "Aguardando sinal", "Sem Crossover e RSI alto")
 
             # Condition 3: RSI Filter
-            rsi_target = regime.rsi_buy
+            rsi_target = session_params.get("rsi_buy", regime.rsi_buy)
             rsi_ok = rsi > rsi_target
             add_cond(f"RSI Filtro (> {rsi_target})",
                      f"{rsi:.1f}",
@@ -606,7 +628,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                  add_cond("Gatilho de Entrada", "Nenhum", "Crossover ou Pullback (RSI>50)", False, "Aguardando sinal", "Sem Crossover e RSI baixo")
 
             # Condition 3: RSI Filter
-            rsi_target = regime.rsi_sell
+            rsi_target = session_params.get("rsi_sell", regime.rsi_sell)
             rsi_ok = rsi < rsi_target
             add_cond(f"RSI Filtro (< {rsi_target})",
                      f"{rsi:.1f}",
@@ -616,13 +638,13 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                      f"RSI muito alto (+{rsi - rsi_target:.1f})" if not rsi_ok else "")
 
         # B. Força da Tendência (ADX)
-        adx_ok = adx > 25
-        add_cond("ADX confirma força",
+        adx_ok = adx > adx_thresh
+        add_cond(f"ADX confirma força (> {adx_thresh})",
                  f"{adx:.1f}",
-                 "> 25",
+                 f"> {adx_thresh}",
                  adx_ok,
                  "Tendência precisa ficar mais forte",
-                 f"+{25 - adx:.1f}" if not adx_ok else "")
+                 f"+{adx_thresh - adx:.1f}" if not adx_ok else "")
 
         # C. Spread
         spread_ok = spread_points < 30 
@@ -634,13 +656,13 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                  "Spread alto!" if not spread_ok else "")
 
         # D. Sessão
-        session_ok = self.is_london_ny_session()
-        add_cond("Sessão London/NY ativa",
+        session_ok = active_sess != "UNKNOWN"
+        add_cond(f"Sessão {active_sess} ativa",
                  "Sim" if session_ok else "Não",
                  "Sim",
                  session_ok,
-                 "Melhor horário para operar",
-                 "Horário de baixa liquidez" if not session_ok else "")
+                 "Horário operacional verificado",
+                 "Mercado fechado ou sem liquidez" if not session_ok else "")
 
         # 3. Construção do Painel
         confidence = (score / max_score) * 100 if max_score > 0 else 0
@@ -673,6 +695,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         log_lines = [
             f"--- WHY REPORT: {symbol} ({direction}) ---",
             f"Confiança: {confidence:.1f}%",
+            f"Sessão: {active_sess}",
             f"Regime: {regime.name}"
         ]
 
