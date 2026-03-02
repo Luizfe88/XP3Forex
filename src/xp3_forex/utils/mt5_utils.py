@@ -91,8 +91,11 @@ def mt5_exec(func, *args, **kwargs):
     _mt5_queue.put((func, args, kwargs, fut))
     try:
         return fut.result(timeout=timeout)
+    except TimeoutError:
+        logger.error(f"⏰ TIMEOUT ({timeout}s) aguardando MT5 worker para: {func.__name__} | Fila provavelmente bloqueada")
+        return None
     except Exception as e:
-        logger.error(f"Erro na execução MT5 ({func.__name__}): {e}")
+        logger.error(f"Erro na execução MT5 ({func.__name__}): {type(e).__name__}: {e}")
         return None
 
 def mt5_shutdown_worker():

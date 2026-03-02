@@ -101,6 +101,7 @@ class Settings(BaseSettings):
     # 3. RISK MANAGEMENT
     # ===========================
     RISK_PER_TRADE: float = Field(default=0.5, description="% do saldo por trade (ex: 0.5 para 0.5%)")
+    MAX_LOTS_PER_TRADE: float = Field(default=1.0, description="Volume máximo por trade (lotes)")
     MAX_POSITIONS: int = Field(default=5, description="Máximo de posições simultâneas")
     MAX_DAILY_LOSS_PERCENT: float = Field(default=3.0, description="Perda máxima diária (%)")
     KILL_SWITCH_DD_PCT: float = Field(default=0.05, description="Kill Switch se DD Global > X% (0.05 = 5%)")

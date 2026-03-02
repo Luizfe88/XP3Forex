@@ -47,7 +47,8 @@ def calculate_lot_size(symbol: str, risk_amount: float, stop_loss_pips: float) -
         lot_size = round(lot_size, 2)
         
         # Limites de volume
-        lot_size = max(0.01, min(lot_size, 100.0))
+        from ..core.settings import settings
+        lot_size = max(0.01, min(lot_size, settings.MAX_LOTS_PER_TRADE))
         
         return lot_size
     except Exception as e:
@@ -91,7 +92,8 @@ def calculate_position_size(account_balance: float, risk_percent: float, stop_lo
         position_size = round(position_size, 2)
         
         # Limites de volume
-        position_size = max(0.01, min(position_size, 100.0))
+        from ..core.settings import settings
+        position_size = max(0.01, min(position_size, settings.MAX_LOTS_PER_TRADE))
         
         return position_size
     except:
