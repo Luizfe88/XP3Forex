@@ -634,13 +634,18 @@ class TradeExecutor:
             elif fm & 4: filling_mode = mt5.ORDER_FILLING_RETURN
             elif fm & 1: filling_mode = mt5.ORDER_FILLING_FOK
 
+        request_price = float(round(price, digits))
+        if sym_info and sym_info.trade_exemode == 2:
+            logger.info(f"⚖️ Market Execution detectado para fechar {symbol}. Usando preço 0.0.")
+            request_price = 0.0
+
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
             "volume": float(volume),
             "type": order_type,
             "position": ticket,
-            "price": float(round(price, digits)),
+            "price": request_price,
             "deviation": settings.MAX_SLIPPAGE,
             "magic": settings.MAGIC_NUMBER,
             "comment": "XP3: CLOSE POS",
@@ -648,7 +653,14 @@ class TradeExecutor:
             "type_filling": filling_mode,
         }
 
-        result = mt5_exec(mt5.order_send, request=request, timeout=10)
+        # CRITICAL: Direct call instead of mt5_exec (same thread requirement for C-extension)
+        result = mt5.order_send(request)
+        
+        # Fallback if 10013 occurs and we didn't use 0.0 yet
+        if result and result.retcode == 10013 and request_price != 0.0:
+            logger.warning(f"⚠️ Erro 10013 ao fechar {symbol}. Retentando Fallback com price=0.0")
+            request["price"] = 0.0
+            result = mt5.order_send(request)
         
         if result is None:
             logger.error(f"❌ Falha crítica ao fechar posição {ticket} (MT5 None)")

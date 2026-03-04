@@ -438,13 +438,19 @@ class XP3Bot:
         # 2 = Wednesday em Python weekday()? No, 0=Mon, 1=Tue, 2=Wed
         if now.weekday() == 2: # Quarta-feira
             if now.hour == 17 and now.minute >= 45 and now.minute < 55:
-                # Verifica se já fechamos hoje para não entrar em loop (embora agora os remova)
+                # Verifica se já fechamos hoje para não entrar em loop
                 if self.positions:
                     logger.warning("💸 TRIPLE SWAP GUARD: Fechando todas as posições para evitar taxas de rollover...")
-                    self.close_all_positions()
                     
-                    # Notificar Telegram
-                    send_telegram_message("💸 *Triple Swap Guard Ativado*\nTodas as posições foram fechadas para evitar taxas triplas de rollover.")
+                    # Notificar Telegram apenas uma vez por janela
+                    if not getattr(self, '_triple_swap_notified_today', False):
+                        send_telegram_message("💸 *Triple Swap Guard Ativado*\nFechando posições para evitar taxas triplas de rollover.")
+                        self._triple_swap_notified_today = True
+                        
+                    self.close_all_positions()
+            else:
+                # Reset the flag outside the window
+                self._triple_swap_notified_today = False
     
     def consumer_loop(self):
         """Consumes market data from queue and processes strategy"""
