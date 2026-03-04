@@ -85,7 +85,7 @@ class Settings(BaseSettings):
     MT5_PASSWORD: str = Field(default="", description="Senha MT5")
     MT5_SERVER: str = Field(default="", description="Servidor da Corretora")
     MT5_PATH: str = Field(
-        default=r"C:\Program Files\MetaTrader 5\terminal64.exe",
+        default=r"C:\Program Files\MetaTrader 5 IC Markets Global\terminal64.exe",
         description="Caminho do executável terminal64.exe"
     )
     MT5_TIMEOUT: int = Field(default=60, description="Timeout para conexão MT5 (segundos)")

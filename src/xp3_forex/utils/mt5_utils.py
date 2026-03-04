@@ -275,8 +275,11 @@ def initialize_mt5(login: int = None, password: str = None, server: str = None, 
             init_ok = mt5.initialize()
             
         if init_ok:
-            logger.info(f"MT5 inicializado com sucesso.")
-            # Opcional: Verificar login se credenciais fornecidas (mas removido conforme pedido anterior)
+            acc_info = mt5.account_info()
+            if acc_info:
+                logger.info(f"✅ MT5 inicializado. Conta: {acc_info.login} | Servidor: {acc_info.server}")
+            else:
+                logger.info(f"MT5 inicializado com sucesso.")
             return True
         else:
             logger.error(f"Falha ao inicializar MT5: {mt5.last_error()}")

@@ -203,21 +203,22 @@ class TradeExecutor:
 
             volume = risk_amount / loss_per_lot
 
-            # Normalizar volume (step, min, max)
+            # Normalizar volume (step, min, max) de forma ultra-precisa
             step = symbol_info.get("volume_step", 0.01)
             min_vol = symbol_info.get("volume_min", 0.01)
-            max_vol = symbol_info.get("volume_max", 100.0)  # Cap at 100 or symbol max
-
+            max_vol = symbol_info.get("volume_max", 100.0)
+            
             # Hard cap institutional
             max_vol = min(max_vol, settings.MAX_LOTS_PER_TRADE)
 
-            # Round to step
+            # Normalização matemática para evitar erros de floating point
             if step > 0:
                 volume = round(volume / step) * step
 
             volume = max(min_vol, min(volume, max_vol))
-
-            return round(volume, 2)
+            
+            # Round final para 2 casas para evitar lixo binário no envio
+            return float(round(volume, 2))
 
         except Exception as e:
             logger.error(f"Erro ao calcular lote para {symbol}: {e}")
@@ -280,27 +281,33 @@ class TradeExecutor:
             f"🎯 INTENÇÃO: {resolved_symbol} {order_type} @ {price:.5f} (Vol: {calculated_volume:.2f} | Risco: 0.3%)"
         )
 
-        # 4. Preparação da Ordem
+        # 4. Preparação da Ordem e Normalização de Dígitos (FIM DO ERRO 10013)
         action = mt5.TRADE_ACTION_DEAL
         type_op = mt5.ORDER_TYPE_BUY if order_type == "BUY" else mt5.ORDER_TYPE_SELL
+        
+        # Obter informações do símbolo (filling mode, digits, trade mode)
+        sym_info = mt5_exec(mt5.symbol_info, resolved_symbol)
+        
+        # Obter precisão do símbolo
+        digits = sym_info.digits if sym_info else 5
+        
+        # Normalização CRÍTICA: JPY usa 3 casas, Majors usam 5.
+        # Enviar mais casas causa retcode 10013 (Invalid Request).
+        price = round(price, digits)
+        sl = round(sl, digits)
+        tp = round(tp, digits)
 
         # Auto-detect filling mode (corretoras diferem: IOC, RETURN, FOK)
         filling_mode = mt5.ORDER_FILLING_IOC  # default
-        sym_info = mt5_exec(mt5.symbol_info, resolved_symbol)
         if sym_info is not None:
             fm = sym_info.filling_mode
-            # filling_mode é bitmask: 1=FOK, 2=IOC, 4=RETURN
-            # Prioridade: IOC (mais universal) > FOK > RETURN
-            if fm & 2:  # IOC disponível (mais universal)
+            if fm & 2:  # IOC
                 filling_mode = mt5.ORDER_FILLING_IOC
-            elif fm & 4:  # RETURN disponível
+            elif fm & 4:  # RETURN
                 filling_mode = mt5.ORDER_FILLING_RETURN
-            elif fm & 1:  # FOK disponível
+            elif fm & 1:  # FOK
                 filling_mode = mt5.ORDER_FILLING_FOK
-            else:
-                logger.warning(
-                    f"⚠️ Nenhum filling mode padrão disponível para {resolved_symbol}"
-                )
+            
             logger.info(
                 f"Filling mode para {resolved_symbol}: {filling_mode} (bitmask={fm})"
             )
@@ -328,27 +335,27 @@ class TradeExecutor:
             return None
 
         # Check if symbol is in close-only mode or disabled
-        # trade_mode: 0=disabled, 1=buy-only, 2=sell-only, 3=buy+sell, 4=close-only
-        if sym_info.trade_mode == 0:
+        if sym_info.trade_mode == mt5.SYMBOL_TRADE_MODE_DISABLED:
             logger.error(f"❌ Symbol {resolved_symbol} está DESABILITADO para trading")
             return None
 
-        if sym_info.trade_mode == 4:
+        if sym_info.trade_mode == mt5.SYMBOL_TRADE_MODE_CLOSEONLY:
             logger.error(
-                f"❌ Symbol {resolved_symbol} está em modo CLOSE-ONLY (possível alta volatilidade/notícias)"
+                f"⛔ SINAL BLOQUEADO (Broker): {resolved_symbol} está em modo CLOSE-ONLY pela corretora. "
+                f"O robô não pode abrir novas posições agora."
             )
             return None
 
         # Validate trade direction is supported
-        if order_type == "BUY" and sym_info.trade_mode == 2:
+        if order_type == "BUY" and sym_info.trade_mode == mt5.SYMBOL_TRADE_MODE_SHORTONLY:
             logger.error(
-                f"❌ Symbol {resolved_symbol} permite apenas SELL (trade_mode=2)"
+                f"❌ Symbol {resolved_symbol} permite apenas SELL (SHORT-ONLY)"
             )
             return None
 
-        if order_type == "SELL" and sym_info.trade_mode == 1:
+        if order_type == "SELL" and sym_info.trade_mode == mt5.SYMBOL_TRADE_MODE_LONGONLY:
             logger.error(
-                f"❌ Symbol {resolved_symbol} permite apenas BUY (trade_mode=1)"
+                f"❌ Symbol {resolved_symbol} permite apenas BUY (LONG-ONLY)"
             )
             return None
 
@@ -362,6 +369,22 @@ class TradeExecutor:
             if not mt5.terminal_info().connected:
                 logger.error("❌ Falha crítica: MT5 desconectado.")
                 return None
+
+            # CRITICAL: Pre-check margin to avoid rejections
+            required_margin = mt5_exec(mt5.order_calc_margin, type_op, resolved_symbol, float(calculated_volume), float(price))
+            account_info = mt5_exec(mt5.account_info)
+            
+            if required_margin is not None and account_info is not None:
+                if required_margin > account_info.margin_free:
+                    logger.error(
+                        f"❌ MARGEM INSUFICIENTE: Requerido ${required_margin:.2f} | Disponível ${account_info.margin_free:.2f} "
+                        f"para {calculated_volume} lotes de {resolved_symbol}"
+                    )
+                    return None
+                else:
+                    logger.info(f"✅ Margem Verificada: ${required_margin:.2f} necessária.")
+            else:
+                logger.warning("⚠️ Não foi possível pré-calcular a margem (MT5 API issue).")
 
             # CRITICAL: Refresh prices before order_check to avoid stale price rejections
             tick = symbol_manager.get_tick(resolved_symbol)
