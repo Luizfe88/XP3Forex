@@ -8,11 +8,14 @@ from ..core.settings import ELITE_CONFIG, SYMBOL_MAP
 def get_pip_size(symbol: str) -> float:
     """Obtém o tamanho do pip para o símbolo"""
     try:
-        if symbol.startswith("XAU") or symbol.startswith("GOLD"):
+        s = symbol.upper()
+        if s.startswith("XAU") or s.startswith("GOLD"):
             return 0.01
-        elif symbol.startswith("XAG") or symbol.startswith("SILVER"):
+        elif s.startswith("XAG") or s.startswith("SILVER"):
             return 0.001
-        elif "JPY" in symbol or "JPY" in symbol.replace("USD", "").replace("EUR", "").replace("GBP", "").replace("AUD", "").replace("CAD", "").replace("CHF", "").replace("NZD", "").replace("CNH", "").replace("TRY", "").replace("ZAR", "").replace("MXN", "").replace("RUB", "").replace("PLN", "").replace("HUF", "").replace("CZK", "").replace("DKK", "").replace("NOK", "").replace("SEK", ""):
+        elif any(x in s for x in ["US30", "US100", "NAS100", "SPX", "US500", "GER40", "DE40", "UK100", "JP225", "BRA50", "HK50", "FRA40", "EUSTX50"]):
+            return 1.0
+        elif "JPY" in s or "JPY" in s.replace("USD", "").replace("EUR", "").replace("GBP", "").replace("AUD", "").replace("CAD", "").replace("CHF", "").replace("NZD", "").replace("CNH", "").replace("TRY", "").replace("ZAR", "").replace("MXN", "").replace("RUB", "").replace("PLN", "").replace("HUF", "").replace("CZK", "").replace("DKK", "").replace("NOK", "").replace("SEK", ""):
             return 0.01
         else:
             return 0.0001

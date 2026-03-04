@@ -59,6 +59,9 @@ class SymbolManager:
         self.CACHE_TTL = 3600  # 1 hour for static info
         self.ALL_SYMBOLS_REFRESH = 3600 * 24 # 24 hours
         
+        # Trade Mode status for logging
+        self._last_trademode_log: Dict[str, float] = {}
+        
         logger.info("SymbolManager Singleton inicializado")
 
     def get_tradable_symbols(self, ignore_spread: bool = False) -> List[str]:
@@ -81,6 +84,10 @@ class SymbolManager:
             if not resolved_name:
                 continue
             
+            # --- Validação de Trade Mode (Full Only) ---
+            if not self._check_trade_mode(resolved_name):
+                continue
+
             if ignore_spread:
                 tradable_symbols.append(resolved_name)
                 # Mantém o buffer para o log de resumo mesmo se ignorarmos o filtro agora
@@ -158,6 +165,10 @@ class SymbolManager:
             
         spread_points = int((tick.ask - tick.bid) / info.point) if info.point > 0 else info.spread
         
+        # 0. Verificar Trade Mode Primeiro
+        if not self._check_trade_mode(symbol):
+            return False
+
         # Categorizar e pegar threshold
         category = self._categorize_symbol(symbol)
         max_spread = self._get_max_spread_for_category(category)
@@ -168,6 +179,39 @@ class SymbolManager:
             if now - self._last_spread_log.get(symbol, 0) > 86400: # 24h
                 logger.info(f"🚫 Spread alto para {symbol} ({category}): {spread_points} > {max_spread}. Ignorando (Log diário).")
                 self._last_spread_log[symbol] = now
+            return False
+            
+        return True
+
+    def _check_trade_mode(self, symbol: str) -> bool:
+        """
+        Verifica se o símbolo tem permissão total de negociação.
+        Ignora se estiver em Close-Only ou Disabled.
+        """
+        real_name = self.resolve_name(symbol)
+        if not real_name:
+            return False
+            
+        # Busca sempre informação fresca para trade_mode pois pode mudar dinamicamente
+        info = mt5_exec(mt5.symbol_info, real_name)
+        if not info:
+            return False
+            
+        if info.trade_mode != mt5.SYMBOL_TRADE_MODE_FULL:
+            # Traduzir modo para string legível
+            modes = {
+                mt5.SYMBOL_TRADE_MODE_DISABLED: "DISABLED (Desativado)",
+                mt5.SYMBOL_TRADE_MODE_LONGONLY: "LONG-ONLY (Apenas Compra)",
+                mt5.SYMBOL_TRADE_MODE_SHORTONLY: "SHORT-ONLY (Apenas Venda)",
+                mt5.SYMBOL_TRADE_MODE_CLOSEONLY: "CLOSE-ONLY (Apenas Fechamento)"
+            }
+            mode_str = modes.get(info.trade_mode, f"UNKNOWN ({info.trade_mode})")
+            
+            # Log de aviso (1x por hora para evitar spam)
+            now = time.time()
+            if now - self._last_trademode_log.get(symbol, 0) > 3600:
+                logger.warning(f"⚠️ Ativo {symbol} temporariamente ignorado: Modo de negociação restrito pela corretora: {mode_str}")
+                self._last_trademode_log[symbol] = now
             return False
             
         return True

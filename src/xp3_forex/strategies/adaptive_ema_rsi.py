@@ -197,6 +197,13 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             # ADX Filter from Session
             if adx < adx_thresh:
                 return None
+                
+            # Dynamic RSI Tolerance for NY Session (Strong Trend)
+            active_sess = session_params.get("active_session", "UNKNOWN")
+            if "NY" in active_sess.upper() and adx > 35:
+                # Relax thresholds to catch micro-corrections in strong trend
+                rsi_buy_thresh -= 10
+                rsi_sell_thresh += 10
             
             # 3. Signal Logic
             signal_type = None
@@ -596,6 +603,9 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
 
             # Condition 3: RSI Filter
             rsi_target = session_params.get("rsi_buy", regime.rsi_buy)
+            if "NY" in active_sess.upper() and adx > 35:
+                rsi_target -= 10
+                
             rsi_ok = rsi > rsi_target
             add_cond(f"RSI Filtro (> {rsi_target})",
                      f"{rsi:.1f}",
@@ -629,6 +639,9 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
 
             # Condition 3: RSI Filter
             rsi_target = session_params.get("rsi_sell", regime.rsi_sell)
+            if "NY" in active_sess.upper() and adx > 35:
+                rsi_target += 10
+                
             rsi_ok = rsi < rsi_target
             add_cond(f"RSI Filtro (< {rsi_target})",
                      f"{rsi:.1f}",
