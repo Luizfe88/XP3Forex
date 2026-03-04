@@ -29,5 +29,6 @@ class Position:
     pips: float
     open_time: datetime
     magic_number: int
+    ticket: int = 0
     partial_taken: bool = False
     initial_sl_dist: float = 0.0

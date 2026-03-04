@@ -198,9 +198,34 @@ class XP3Bot:
             logger.error(f"Erro ao inicializar MT5: {e}")
             return False
     
+            return None
+
+    def is_in_rollover_pause(self) -> bool:
+        """
+        🚫 Rollover Pause: Verifica se o robô deve pausar novas entradas.
+        Bloqueio: Quarta 17:00 até Quinta 01:00 (BRT).
+        """
+        now = datetime.now()
+        wd = now.weekday()
+        hr = now.hour
+        
+        # Quarta das 17:00 em diante
+        if wd == 2 and hr >= 17:
+            return True
+        # Quinta até as 01:00
+        if wd == 3 and hr < 1:
+            return True
+            
+        return False
+    
     def analyze_symbol(self, symbol: str, timeframe: int, df: pd.DataFrame) -> Optional[TradeSignal]:
         """Analyze a symbol and generate trading signal using provided DataFrame"""
         try:
+            # 0. Rollover Pause Check (Institutional)
+            if self.is_in_rollover_pause():
+                # Silencioso para não poluir logs, mas bloqueia novas entradas
+                return None
+
             # 0. Cooldown / Sanity Check (FAIL FAST)
             if not trade_executor.can_trade(symbol, silent=True):
                 # Log opcional limitado a 1x por minuto
@@ -278,7 +303,8 @@ class XP3Bot:
                     open_time=signal.timestamp,
                     magic_number=settings.MAGIC_NUMBER,
                     initial_sl_dist=initial_sl_dist,
-                    partial_taken=False
+                    partial_taken=False,
+                    ticket=ticket
                 )
                 
                 self.positions[signal.symbol] = position
@@ -396,9 +422,29 @@ class XP3Bot:
         """Close all open positions (Kill Switch)"""
         with self.lock:
             for symbol in list(self.positions.keys()):
-                logger.warning(f"Closing {symbol} due to Kill Switch")
-                del self.positions[symbol]
+                position = self.positions[symbol]
+                logger.warning(f"Closing {symbol} (Ticket: {position.ticket}) due to Kill Switch")
+                if trade_executor.close_position(position.ticket, symbol):
+                    del self.positions[symbol]
             logger.info("All positions closed.")
+    
+    def check_triple_swap_guard(self):
+        """
+        💸 Triple Swap Guard: Fecha posições na Quarta-feira às 17:45 (Horário do Robô/BRT)
+        para evitar taxas triplas de rollover.
+        """
+        now = datetime.now() # Horário Local (BRT)
+        
+        # 2 = Wednesday em Python weekday()? No, 0=Mon, 1=Tue, 2=Wed
+        if now.weekday() == 2: # Quarta-feira
+            if now.hour == 17 and now.minute >= 45 and now.minute < 55:
+                # Verifica se já fechamos hoje para não entrar em loop (embora agora os remova)
+                if self.positions:
+                    logger.warning("💸 TRIPLE SWAP GUARD: Fechando todas as posições para evitar taxas de rollover...")
+                    self.close_all_positions()
+                    
+                    # Notificar Telegram
+                    send_telegram_message("💸 *Triple Swap Guard Ativado*\nTodas as posições foram fechadas para evitar taxas triplas de rollover.")
     
     def consumer_loop(self):
         """Consumes market data from queue and processes strategy"""
@@ -490,6 +536,9 @@ class XP3Bot:
                     if self._last_maintenance_date != now_utc.date():
                         self.run_daily_maintenance()
                         self._last_maintenance_date = now_utc.date()
+                
+                # --- Triple Swap Guard (Wed 17:45 BRT) ---
+                self.check_triple_swap_guard()
 
             except Exception as e:
                 logger.error(f"Erro no consumer_loop: {e}")
@@ -531,8 +580,6 @@ class XP3Bot:
         if hasattr(self, 'data_feeder'):
             self.data_feeder.symbols = self.symbols
         
-        return valid_symbols
-
         return valid_symbols
 
     def run_daily_maintenance(self):

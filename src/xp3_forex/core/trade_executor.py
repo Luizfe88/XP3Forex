@@ -56,7 +56,7 @@ class TradeExecutor:
 
         # Circuit Breaker State (Error Tracking)
         self.consecutive_failures = 0
-        self.CIRCUIT_BREAKER_LIMIT = 5
+        self.CIRCUIT_BREAKER_LIMIT = 20 # Increased for debugging Silver issues
         self.circuit_breaker_until = 0.0
 
         logger.info(f"TradeExecutor inicializado em modo: {self.mode.upper()}")
@@ -391,12 +391,14 @@ class TradeExecutor:
             tick = symbol_manager.get_tick(resolved_symbol)
             if tick:
                 old_price = request["price"]
-                request["price"] = tick.ask if order_type == "BUY" else tick.bid
+                # Refresh price to tick, then round to correct digits
+                request["price"] = round(tick.ask if order_type == "BUY" else tick.bid, digits)
+                
                 price_diff = abs(request["price"] - old_price)
-                if price_diff > sym_info.point * 5:  # More than 5 points difference
+                if price_diff > (sym_info.point if sym_info else 0.00001) * 5:  # More than 5 points difference
                     logger.warning(
-                        f"⚠️ STALE PRICES DETECTED | Old: {old_price:.5f} → New: {request['price']:.5f} "
-                        f"(Diff: {price_diff:.5f})"
+                        f"⚠️ STALE PRICES DETECTED | Old: {old_price:.{digits}f} → New: {request['price']:.{digits}f} "
+                        f"(Diff: {price_diff:.{digits}f})"
                     )
             else:
                 logger.warning(
@@ -413,11 +415,11 @@ class TradeExecutor:
                 if attempt == 0:
                     check = mt5_exec(mt5.order_check, request=request, timeout=10)
 
-                    # Always log the request details
+                    # Always log the request details with correct precision
                     logger.info(
                         f"📋 Order Request: {request['symbol']} {'BUY' if request['type'] == mt5.ORDER_TYPE_BUY else 'SELL'} "
-                        f"Vol={request['volume']:.2f} Price={request['price']:.5f} "
-                        f"SL={request['sl']:.5f} TP={request['tp']:.5f} | Filling={request['type_filling']}"
+                        f"Vol={request['volume']:.2f} Price={request['price']:.{digits}f} "
+                        f"SL={request['sl']:.{digits}f} TP={request['tp']:.{digits}f} | Filling={request['type_filling']}"
                     )
 
                     if check is not None:
@@ -429,22 +431,32 @@ class TradeExecutor:
                         )
 
                         if check.retcode != 0:
-                            # Log account info junto com erro (importante para diagnosticar margin issues)
-                            logger.error(
-                                f"❌ order_check FALHOU | Retcode: {check.retcode} ({check.comment}) "
-                                f"| margin={check.margin:.2f} | margin_free={check.margin_free:.2f} "
-                                f"| ACCOUNT: Balance={account_info['balance']:.2f} Equity={account_info['equity']:.2f} "
-                                f"FL={margin_level_str} | Symbol trade_mode={sym_info.trade_mode if sym_info else 'N/A'}"
-                            )
-                            # NO FORCE BYPASS for order_check: if check fails, send will definitely fail
-                            self.handle_failure()
-                            return None
-                        else:
-                            logger.info(
-                                f"✅ order_check OK | Required Margin: ${check.margin:.2f} | "
-                                f"Available: ${account_info['margin_free']:.2f} | "
-                                f"Fee: ${check.commission:.2f} | Profit: ${check.profit:.2f}"
-                            )
+                            # FALLBACK: Se erro for 10013, tenta sem SL/TP (algumas corretoras não aceitam no DEAL inicial)
+                            if check.retcode == 10013 and (request.get("sl") or request.get("tp")):
+                                logger.warning(f"⚠️ Erro 10013 detectado. Tentando FALLBACK sem SL/TP para {resolved_symbol}...")
+                                request["sl"] = 0.0
+                                request["tp"] = 0.0
+                                check = mt5_exec(mt5.order_check, request=request, timeout=10)
+                                if check and check.retcode == 0:
+                                    logger.info(f"✅ Fallback sem SL/TP funcionou para {resolved_symbol}!")
+                                else:
+                                    logger.error(f"❌ Fallback também falhou para {resolved_symbol} (Retcode: {check.retcode if check else 'None'})")
+                            
+                            if not check or check.retcode != 0:
+                                # Log account info junto com erro (importante para diagnosticar margin issues)
+                                logger.error(
+                                    f"❌ order_check FALHOU | Retcode: {check.retcode if check else 'N/A'} ({check.comment if check else 'None'}) "
+                                    f"| margin={check.margin if check else 0:.2f} | margin_free={check.margin_free if check else 0:.2f} "
+                                    f"| ACCOUNT: Balance={account_info['balance']:.2f} Equity={account_info['equity']:.2f} "
+                                    f"FL={margin_level_str} | Symbol trade_mode={sym_info.trade_mode if sym_info else 'N/A'}"
+                                )
+                                # NO FORCE BYPASS for order_check: if check fails, send will definitely fail
+                                self.handle_failure()
+                                return None
+                            else:
+                                logger.info(
+                                    f"✅ order_check OK (Após Fallback) | Required Margin: ${check.margin:.2f}"
+                                )
                     else:
                         logger.error(
                             f"❌ order_check retornou None para {resolved_symbol}"
@@ -564,6 +576,71 @@ class TradeExecutor:
                 f"✅ [SIMULAÇÃO] ORDEM EXECUTADA | Ticket: PAPER-{int(time.time())}"
             )
             return int(time.time())
+
+    def close_position(self, ticket: int, symbol: str) -> bool:
+        """
+        Fecha uma posição específica no MT5 pelo seu ticket.
+        """
+        if self.mode not in ["live", "demo"]:
+            logger.info(f"🧪 [SIMULAÇÃO] Posição {ticket} de {symbol} fechada.")
+            return True
+
+        position = mt5.positions_get(ticket=ticket)
+        if not position or len(position) == 0:
+            logger.error(f"❌ Posição {ticket} não encontrada no MT5.")
+            return False
+
+        pos = position[0]
+        symbol = pos.symbol
+        volume = pos.volume
+        order_type = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+        
+        # Get current price
+        tick = symbol_manager.get_tick(symbol)
+        if not tick:
+            logger.error(f"❌ Falha ao obter preço para fechar {symbol}.")
+            return False
+            
+        price = tick.bid if order_type == mt5.ORDER_TYPE_SELL else tick.ask
+        
+        # Get symbol info for filling mode and digits
+        sym_info = mt5.symbol_info(symbol)
+        digits = sym_info.digits if sym_info else 5
+        
+        # Auto-detect filling mode
+        filling_mode = mt5.ORDER_FILLING_IOC
+        if sym_info:
+            fm = sym_info.filling_mode
+            if fm & 2: filling_mode = mt5.ORDER_FILLING_IOC
+            elif fm & 4: filling_mode = mt5.ORDER_FILLING_RETURN
+            elif fm & 1: filling_mode = mt5.ORDER_FILLING_FOK
+
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": symbol,
+            "volume": float(volume),
+            "type": order_type,
+            "position": ticket,
+            "price": float(round(price, digits)),
+            "deviation": settings.MAX_SLIPPAGE,
+            "magic": settings.MAGIC_NUMBER,
+            "comment": "XP3: CLOSE POS",
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": filling_mode,
+        }
+
+        result = mt5_exec(mt5.order_send, request=request, timeout=10)
+        
+        if result is None:
+            logger.error(f"❌ Falha crítica ao fechar posição {ticket} (MT5 None)")
+            return False
+            
+        if result.retcode == mt5.TRADE_RETCODE_DONE:
+            logger.info(f"✅ Posição {ticket} ({symbol}) FECHADA com sucesso.")
+            return True
+        else:
+            logger.error(f"❌ Falha ao fechar posição {ticket}: {result.retcode} ({result.comment})")
+            return False
 
     def handle_failure(self):
         """Gerencia falhas consecutivas para ativar Circuit Breaker"""
