@@ -55,6 +55,9 @@ from .health_monitor import HealthMonitor
 from .data_feeder import DataFeeder
 from .rate_cache import RateCache
 from ..strategies.adaptive_ema_rsi import AdaptiveEmaRsiStrategy
+from ..optimization.learner import DailyLearner
+from ..reporting.daily_report import DailyReportGenerator
+from ..utils.telegram_utils import send_telegram_message, send_telegram_document
 
 logger = logging.getLogger("XP3_BOT")
 
@@ -105,6 +108,11 @@ class XP3Bot:
             self.console = None
         self.last_report_time = 0
         self.last_cooldown_log = {}  # Controle de log por símbolo
+        self._last_maintenance_date = None
+        
+        # Components for Learning
+        self.learner = DailyLearner(self.symbols)
+        self.report_gen = DailyReportGenerator()
         
         logger.info(f"🚀 XP3 PRO FOREX BOT v5.0 INSTITUCIONAL Inicializado")
         logger.info(f"Symbols: {self.symbols}")
@@ -476,6 +484,13 @@ class XP3Bot:
                 except queue.Empty:
                     pass
                     
+                # --- Daily Maintenance (23:55 UTC) ---
+                now_utc = datetime.utcnow()
+                if now_utc.hour == 23 and now_utc.minute >= 55:
+                    if self._last_maintenance_date != now_utc.date():
+                        self.run_daily_maintenance()
+                        self._last_maintenance_date = now_utc.date()
+
             except Exception as e:
                 logger.error(f"Erro no consumer_loop: {e}")
                 time.sleep(1)
@@ -517,6 +532,30 @@ class XP3Bot:
             self.data_feeder.symbols = self.symbols
         
         return valid_symbols
+
+        return valid_symbols
+
+    def run_daily_maintenance(self):
+        """Executa ciclo de aprendizado e relatório diário"""
+        logger.info("🛠️ Iniciando MANUTENÇÃO DIÁRIA (Aprendizado + Relatórios)...")
+        try:
+            # 1. Rodar Learner
+            learnings = self.learner.run_full_learning()
+            
+            # 2. Gerar Relatório
+            if learnings:
+                report_path = self.report_gen.generate_learning_report(learnings)
+                logger.info(f"📚 Lições do dia arquivadas em: {report_path}")
+                
+                # 3. Enviar para Telegram
+                send_telegram_message("📊 *Relatório Diário de Aprendizado XP3 Disponível*")
+                send_telegram_document(report_path, caption=f"Learnings {datetime.now().strftime('%Y-%m-%d')}")
+            else:
+                logger.warning("⚠️ O Ciclo de Aprendizado não gerou novos parâmetros (dados insuficientes?)")
+                
+            logger.info("✅ Manutenção Diária concluída com sucesso.")
+        except Exception as e:
+            logger.error(f"Erro durante a manutenção diária: {e}")
 
     def start(self):
         """Start the bot"""

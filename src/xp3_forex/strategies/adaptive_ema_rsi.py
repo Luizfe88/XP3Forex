@@ -81,6 +81,17 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         logger.info("🚀 Starting Strategy: AR-EMA-RSI v1.0")
         self.update_daily_stats()
         
+        # Log persistence check
+        json_path = settings.DATA_DIR / "session_optimized_params.json"
+        if json_path.exists():
+            try:
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    cnt = len(json.load(f))
+                logger.info(f"📂 Memória de Ontem: {cnt} ativos carregados com pesos persistentes.")
+            except: pass
+        else:
+            logger.info("🆕 Memória Vazia: Iniciando com pesos originais (Padrão Institucional).")
+        
         # Only iterate over bot symbols (which are already filtered)
         for symbol in self.bot.symbols:
             try:

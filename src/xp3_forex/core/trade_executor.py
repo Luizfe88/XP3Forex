@@ -11,6 +11,7 @@ from datetime import datetime
 
 from xp3_forex.core.settings import settings
 from xp3_forex.mt5.symbol_manager import symbol_manager
+from xp3_forex.utils.telegram_utils import send_telegram_message
 from xp3_forex.core.models import TradeSignal, Position
 from xp3_forex.utils.mt5_utils import mt5_exec, get_symbol_info
 
@@ -479,6 +480,18 @@ class TradeExecutor:
                     logger.info(
                         f"✅ ORDEM EXECUTADA com sucesso | Ticket: {result.order} | Preço: {result.price} | Comment: {result.comment}"
                     )
+                    
+                    # Notificação Telegram
+                    msg = (
+                        f"🚀 *XP3 TRADE EXECUTADO*\n"
+                        f"Ativo: `{resolved_symbol}`\n"
+                        f"Operação: *{order_type}*\n"
+                        f"Volume: `{calculated_volume:.2f}`\n"
+                        f"Preço: `{result.price:.5f}`\n"
+                        f"Ticket: `{result.order}`"
+                    )
+                    send_telegram_message(msg)
+                    
                     signal.entry_price = result.price  # Atualiza com preço real
                     self.consecutive_failures = 0  # Reset failures
                     return result.order
