@@ -313,14 +313,29 @@ class TradeExecutor:
                 f"Filling mode para {resolved_symbol}: {filling_mode} (bitmask={fm})"
             )
 
+        # --- MARKET EXECUTION REFINEMENT (FIM DO ERRO 10013) ---
+        # No modo Market Execution (2), algumas corretoras rejeitam ordens com preço/stops.
+        # Enviamos 0.0 para garantir a execução a mercado.
+        original_price = price
+        if sym_info and sym_info.trade_exemode == 2: # SYMBOL_TRADE_EXEMODE_MARKET
+            logger.info(f"⚖️ Market Execution detectado para {resolved_symbol}. Usando preço 0.0 para abertura.")
+            request_price = 0.0
+            # Alguns brokers também proíbem SL/TP na abertura no modo Market
+            request_sl = 0.0
+            request_tp = 0.0
+        else:
+            request_price = float(price)
+            request_sl = float(sl)
+            request_tp = float(tp)
+
         request = {
             "action": action,
             "symbol": resolved_symbol,
             "volume": float(calculated_volume),
             "type": type_op,
-            "price": float(price),
-            "sl": float(sl),
-            "tp": float(tp),
+            "price": request_price,
+            "sl": request_sl,
+            "tp": request_tp,
             "deviation": settings.MAX_SLIPPAGE,
             "magic": settings.MAGIC_NUMBER,
             "comment": comment,
@@ -431,14 +446,15 @@ class TradeExecutor:
                         )
 
                         if check.retcode != 0:
-                            # FALLBACK: Se erro for 10013, tenta sem SL/TP (algumas corretoras não aceitam no DEAL inicial)
-                            if check.retcode == 10013 and (request.get("sl") or request.get("tp")):
-                                logger.warning(f"⚠️ Erro 10013 detectado. Tentando FALLBACK sem SL/TP para {resolved_symbol}...")
+                            # FALLBACK: Se erro for 10013, tenta com preço 0.0 e sem SL/TP
+                            if check.retcode == 10013:
+                                logger.warning(f"⚠️ Erro 10013 detectado. Tentando FALLBACK (Price=0, No SL/TP) para {resolved_symbol}...")
+                                request["price"] = 0.0
                                 request["sl"] = 0.0
                                 request["tp"] = 0.0
                                 check = mt5_exec(mt5.order_check, request=request, timeout=10)
                                 if check and check.retcode == 0:
-                                    logger.info(f"✅ Fallback sem SL/TP funcionou para {resolved_symbol}!")
+                                    logger.info(f"✅ Fallback funcionou para {resolved_symbol}!")
                                 else:
                                     logger.error(f"❌ Fallback também falhou para {resolved_symbol} (Retcode: {check.retcode if check else 'None'})")
                             
