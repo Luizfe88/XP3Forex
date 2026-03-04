@@ -403,8 +403,9 @@ class TradeExecutor:
                 logger.warning("⚠️ Não foi possível pré-calcular a margem (MT5 API issue).")
 
             # CRITICAL: Refresh prices before order_check to avoid stale price rejections
+            # SKIP if price is 0.0 (Market Execution)
             tick = symbol_manager.get_tick(resolved_symbol)
-            if tick:
+            if tick and request["price"] > 0:
                 old_price = request["price"]
                 # Refresh price to tick, then round to correct digits
                 request["price"] = round(tick.ask if order_type == "BUY" else tick.bid, digits)
@@ -415,11 +416,10 @@ class TradeExecutor:
                         f"⚠️ STALE PRICES DETECTED | Old: {old_price:.{digits}f} → New: {request['price']:.{digits}f} "
                         f"(Diff: {price_diff:.{digits}f})"
                     )
-            else:
+            elif not tick and request["price"] > 0:
                 logger.warning(
-                    f"⚠️ Não foi possível obter preço atual para {resolved_symbol}"
+                    f"⚠️ Não foi possível obter preço atual para {resolved_symbol}, mantendo preço original."
                 )
-                return None
 
             # Retry Logic
             attempts = getattr(settings, "RETRY_ATTEMPTS", 3)
@@ -427,8 +427,10 @@ class TradeExecutor:
 
             for attempt in range(attempts):
                 # Diagnóstico antes do envio (order_check revela o erro exato)
+                # CRITICAL: NOT using mt5_exec wrapper - MT5 C-extension order functions
+                # require direct call in the same thread that processes them.
                 if attempt == 0:
-                    check = mt5_exec(mt5.order_check, request=request, timeout=10)
+                    check = mt5.order_check(request)
 
                     # Always log the request details with correct precision
                     logger.info(
@@ -452,7 +454,7 @@ class TradeExecutor:
                                 request["price"] = 0.0
                                 request["sl"] = 0.0
                                 request["tp"] = 0.0
-                                check = mt5_exec(mt5.order_check, request=request, timeout=10)
+                                check = mt5.order_check(request)  # Direct call (no wrapper)
                                 if check and check.retcode == 0:
                                     logger.info(f"✅ Fallback funcionou para {resolved_symbol}!")
                                 else:
@@ -480,8 +482,9 @@ class TradeExecutor:
                         self.handle_failure()
                         return None
 
-                # Envio real da ordem
-                result = mt5_exec(mt5.order_send, request=request, timeout=60)
+                # Envio Real
+                # CRITICAL: Direct call - same thread requirement for C-extension
+                result = mt5.order_send(request)
 
                 if result is None:
                     last_err = mt5.last_error()

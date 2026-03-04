@@ -19,6 +19,7 @@ mt5_lock = threading.RLock()
 _mt5_queue = queue.Queue()
 _mt5_worker_started = False
 _mt5_worker_thread = None
+_mt5_init_params = {} # Armazena parâmetros para o worker inicializar
 
 # Cache global simples para Rates
 _rates_cache = {}
@@ -62,13 +63,39 @@ def get_mt5_timeframe(tf: int) -> int:
 
 def _mt5_worker():
     """Worker thread para operações MT5 seguras"""
+    # Inicialização local no thread do worker
+    is_init = False
+    
     while True:
         item = _mt5_queue.get()
         if item is None:
             break
         func, args, kwargs, fut = item
+        
         try:
+            # 1. Garante inicialização no thread do worker
+            if not is_init:
+                path = _mt5_init_params.get('path')
+                if path:
+                    is_init = mt5.initialize(path=path)
+                else:
+                    is_init = mt5.initialize()
+                
+                if is_init:
+                    logger.info("✅ MT5 Worker Thread inicializado com sucesso.")
+                else:
+                    logger.error(f"❌ Falha ao inicializar MT5 no Worker: {mt5.last_error()}")
+
+            # 2. Executa função
+            # Nota: usamos res = func(*args, **kwargs)
             res = func(*args, **kwargs)
+            
+            # 3. Se falhar (None), captura erro do MT5 imediatamente no mesmo thread
+            if res is None:
+                err = mt5.last_error()
+                # Passamos o erro junto se for None? Não, mas podemos logar.
+                # logger.debug(f"MT5 Worker: {func.__name__} retornou None. Erro: {err}")
+            
             fut.set_result(res)
         except Exception as e:
             fut.set_exception(e)
@@ -267,8 +294,12 @@ def check_mt5_connection() -> bool:
 
 def initialize_mt5(login: int = None, password: str = None, server: str = None, path: str = None) -> bool:
     """Inicializa conexão MT5 (assumindo logado se params não fornecidos)"""
+    global _mt5_init_params
+    _mt5_init_params = {'path': path, 'login': login, 'password': password, 'server': server}
+    
     try:
-        # Se path fornecido, usa. Senão tenta default.
+        # Tenta inicializar no thread atual para validação imediata, 
+        # mas o worker fará sua própria inicialização.
         if path:
             init_ok = mt5.initialize(path=path)
         else:
