@@ -28,6 +28,7 @@ from ..utils.mt5_utils import get_symbol_info
 from ..utils.indicators import calculate_atr
 from ..utils.calculations import calculate_sl_tp, calculate_lot_size, get_pip_size
 from .session_analyzer import get_active_session_params, get_active_session_name
+from ..mt5.symbol_manager import symbol_manager
 
 logger = logging.getLogger("XP3.Strategy.AR-EMA-RSI")
 
@@ -223,11 +224,11 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             # Conditions based on Regime
             if regime == self.REGIME_STRONG_UP:
                 # In strong uptrend, buy on dips or crossovers
-                if (crossed_up or (current_price > ema_fast and rsi < 50)) and rsi > rsi_buy_thresh:
+                if (crossed_up or (current_price > ema_fast and rsi < 60)) and rsi > rsi_buy_thresh:
                     signal_type = "BUY"
                     
             elif regime == self.REGIME_STRONG_DOWN:
-                 if (crossed_down or (current_price < ema_fast and rsi > 50)) and rsi < rsi_sell_thresh:
+                 if (crossed_down or (current_price < ema_fast and rsi > 40)) and rsi < rsi_sell_thresh:
                     signal_type = "SELL"
                     
             elif regime == self.REGIME_HIGH_VOL:
@@ -293,6 +294,10 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         return None
 
     def check_institutional_filters(self, symbol: str) -> bool:
+        # 0. Early Exit para CLOSE-ONLY symbols
+        if not symbol_manager._check_trade_mode(symbol):
+            return False
+
         # A. Global Daily Drawdown
         if self.daily_stats["profit"] < -(self.get_account_balance() * self.max_daily_drawdown_pct):
             # logger.warning("Daily Drawdown Limit Hit. Trading Paused.")
@@ -587,9 +592,9 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                      f"Invertido por {-ema_diff_pips:.1f} pips" if not trend_ok else "")
             
             # Condition 2: Trigger (Crossover OR Pullback)
-            # Logic from analyze(): (crossed_up or (current_price > ema_fast and rsi < 50))
+            # Logic from analyze(): (crossed_up or (current_price > ema_fast and rsi < 60))
             is_crossover = crossed_up
-            is_pullback = (current_price > ema_fast and rsi < 50)
+            is_pullback = (current_price > ema_fast and rsi < 60)
             trigger_ok = is_crossover or is_pullback
             
             # For report display, we show what matched or what is missing
@@ -599,7 +604,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                  add_cond("Gatilho de Entrada", "Pullback", "Crossover ou Pullback", True, "Pullback na tendência", "")
             else:
                  # Show what failed
-                 add_cond("Gatilho de Entrada", "Nenhum", "Crossover ou Pullback (RSI<50)", False, "Aguardando sinal", "Sem Crossover e RSI alto")
+                 add_cond("Gatilho de Entrada", "Nenhum", "Crossover ou Pullback (RSI<60)", False, "Aguardando sinal", "Sem Crossover e RSI alto")
 
             # Condition 3: RSI Filter
             rsi_target = session_params.get("rsi_buy", regime.rsi_buy)
@@ -625,9 +630,9 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                      f"Invertido por {ema_diff_pips:.1f} pips" if not trend_ok else "")
 
             # Condition 2: Trigger (Crossover OR Pullback)
-            # Logic from analyze(): (crossed_down or (current_price < ema_fast and rsi > 50))
+            # Logic from analyze(): (crossed_down or (current_price < ema_fast and rsi > 40))
             is_crossover = crossed_down
-            is_pullback = (current_price < ema_fast and rsi > 50)
+            is_pullback = (current_price < ema_fast and rsi > 40)
             trigger_ok = is_crossover or is_pullback
             
             if is_crossover:
@@ -635,7 +640,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             elif is_pullback:
                  add_cond("Gatilho de Entrada", "Pullback", "Crossover ou Pullback", True, "Pullback na tendência", "")
             else:
-                 add_cond("Gatilho de Entrada", "Nenhum", "Crossover ou Pullback (RSI>50)", False, "Aguardando sinal", "Sem Crossover e RSI baixo")
+                 add_cond("Gatilho de Entrada", "Nenhum", "Crossover ou Pullback (RSI>40)", False, "Aguardando sinal", "Sem Crossover e RSI baixo")
 
             # Condition 3: RSI Filter
             rsi_target = session_params.get("rsi_sell", regime.rsi_sell)
@@ -660,10 +665,16 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                  f"+{adx_thresh - adx:.1f}" if not adx_ok else "")
 
         # C. Spread
-        spread_ok = spread_points < 30 
+        from ..mt5.symbol_manager import symbol_manager
+        spread_ok = symbol_manager.check_spread(symbol)
+        
+        # Para log visualizar quantos pips
+        category = symbol_manager._categorize_symbol(symbol)
+        max_spread = symbol_manager._get_max_spread_for_category(category)
+        
         add_cond("Spread dentro do limite",
                  f"{spread_points}",
-                 "< 30",
+                 f"< {max_spread}",
                  spread_ok,
                  "Liquidez excelente",
                  "Spread alto!" if not spread_ok else "")

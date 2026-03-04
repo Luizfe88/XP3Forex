@@ -75,21 +75,25 @@ class TestAdaptiveEmaRsiStrategy(unittest.TestCase):
         
         pass
 
-    def test_institutional_filters_drawdown(self):
+    @patch("xp3_forex.strategies.adaptive_ema_rsi.symbol_manager")
+    def test_institutional_filters_drawdown(self, mock_sm):
         # Mock Daily Stats
         self.strategy.daily_stats["profit"] = -500.0
         self.strategy.get_account_balance = MagicMock(return_value=10000.0)
         self.strategy.max_daily_drawdown_pct = 0.03 # 3% of 10000 is 300
+        mock_sm._check_trade_mode.return_value = True
         
         # Check filter
         result = self.strategy.check_institutional_filters("EURUSD")
         self.assertFalse(result)
 
-    def test_institutional_filters_kill_switch(self):
+    @patch("xp3_forex.strategies.adaptive_ema_rsi.symbol_manager")
+    def test_institutional_filters_kill_switch(self, mock_sm):
         self.strategy.daily_stats["profit"] = 0
         self.strategy.get_account_balance = MagicMock(return_value=10000.0)
         self.strategy.get_account_equity = MagicMock(return_value=9400.0) # 6% DD
         self.strategy.kill_switch_dd_pct = 0.05
+        mock_sm._check_trade_mode.return_value = True
         
         result = self.strategy.check_institutional_filters("EURUSD")
         self.assertFalse(result)

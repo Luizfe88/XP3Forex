@@ -6,14 +6,21 @@ from typing import Tuple, Optional, Dict, Any
 from ..core.settings import ELITE_CONFIG, SYMBOL_MAP
 
 def get_pip_size(symbol: str) -> float:
-    """Obtém o tamanho do pip para o símbolo"""
+    """Obtém o tamanho do pip para o símbolo de forma inteligente"""
     try:
+        from ..mt5.symbol_manager import symbol_manager
+        category = symbol_manager._categorize_symbol(symbol)
+        
         s = symbol.upper()
-        if s.startswith("XAU") or s.startswith("GOLD"):
+        if category == "metal":
+            if s.startswith("XAU") or s.startswith("GOLD"):
+                return 0.01  # Ouro historicamente usa 2 casas
+            elif s.startswith("XAG") or s.startswith("SILVER"):
+                return 0.001
             return 0.01
-        elif s.startswith("XAG") or s.startswith("SILVER"):
-            return 0.001
-        elif any(x in s for x in ["US30", "US100", "NAS100", "SPX", "US500", "GER40", "DE40", "UK100", "JP225", "BRA50", "HK50", "FRA40", "EUSTX50"]):
+        elif category == "index":
+            return 1.0 # Índices geralmente correm inteiros
+        elif category == "crypto":
             return 1.0
         elif "JPY" in s or "JPY" in s.replace("USD", "").replace("EUR", "").replace("GBP", "").replace("AUD", "").replace("CAD", "").replace("CHF", "").replace("NZD", "").replace("CNH", "").replace("TRY", "").replace("ZAR", "").replace("MXN", "").replace("RUB", "").replace("PLN", "").replace("HUF", "").replace("CZK", "").replace("DKK", "").replace("NOK", "").replace("SEK", ""):
             return 0.01
@@ -21,6 +28,7 @@ def get_pip_size(symbol: str) -> float:
             return 0.0001
     except:
         return 0.0001
+
 
 def get_tick_value(symbol: str, lot_size: float = 1.0) -> float:
     """Obtém o valor do tick para o símbolo"""
