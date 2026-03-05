@@ -113,6 +113,7 @@ class XP3Bot:
         # Components for Learning
         self.learner = DailyLearner(self.symbols)
         self.report_gen = DailyReportGenerator()
+        self.last_summary_table_time = 0  # Timer para o relatório de 5 min
         
         logger.info(f"🚀 XP3 PRO FOREX BOT v5.0 INSTITUCIONAL Inicializado")
         logger.info(f"Symbols: {self.symbols}")
@@ -333,100 +334,212 @@ class XP3Bot:
             return False
     
     def update_positions(self):
-        """Update open positions using cached SymbolManager"""
+        """Update open positions and synchronize with MT5 reality"""
         try:
             with self.lock:
+                # 1. Sync with MT5 (Truth)
+                # Obter todas as posições reais do MT5 para o nosso Magic Number
+                mt5_positions = mt5_exec(mt5.positions_get, magic=settings.MAGIC_NUMBER)
+                
+                if mt5_positions is None:
+                    # Se falhar o fetch (None), não limpamos a memória local para evitar pânico
+                    # Mas se retornar [] (vazio), significa que nada está aberto.
+                    logger.debug("Falha ao sincronizar posições com MT5 (None returned)")
+                    return
+
+                # Converter para dicionário por Ticket para busca rápida
+                real_tickets = {p.ticket: p for p in mt5_positions}
+
+                # a) Remover da memória o que não existe mais no MT5
+                for symbol in list(self.positions.keys()):
+                    pos = self.positions[symbol]
+                    if pos.ticket not in real_tickets:
+                        logger.info(f"🔄 Sincronismo: Removendo {symbol} da memória (fechado externamente ou no MT5)")
+                        del self.positions[symbol]
+
+                # b) Adicionar à memória o que está no MT5 mas o robô não sabia (ex: após restart)
+                for p in mt5_positions:
+                    if p.symbol not in self.positions:
+                        logger.info(f"🔄 Sincronismo: Redescobrindo posição {p.symbol} (Ticket: {p.ticket})")
+                        
+                        # Tenta estimar SL dist ou usa default
+                        sl_dist = abs(p.price_open - p.sl) if p.sl > 0 else 0
+                        
+                        self.positions[p.symbol] = Position(
+                            symbol=p.symbol,
+                            order_type="BUY" if p.type == mt5.ORDER_TYPE_BUY else "SELL",
+                            volume=p.volume,
+                            entry_price=p.price_open,
+                            current_price=p.price_current,
+                            stop_loss=p.sl,
+                            take_profit=p.tp,
+                            profit=p.profit,
+                            pips=0, # Calculado abaixo
+                            open_time=datetime.fromtimestamp(p.time),
+                            magic_number=p.magic,
+                            initial_sl_dist=sl_dist,
+                            partial_taken=False,
+                            ticket=p.ticket
+                        )
+
+                # 2. Processar Lógica de Gerenciamento (Virtual SL/TP/Trailing)
                 closed_positions = []
                 
                 for symbol, position in self.positions.items():
-                    # Get current price (fresh tick)
-                    tick = self.symbol_manager.get_tick(symbol)
-                    if tick is None:
-                        continue
-                    
-                    # Update position
-                    current_price = tick.ask if position.order_type == "BUY" else tick.bid
+                    # Get actual MT5 position data for this ticket
+                    p_mt5 = real_tickets.get(position.ticket)
+                    if not p_mt5:
+                        continue # Já removido ou em processo de fechamento
+
+                    # Update position with fresh MT5 data
+                    current_price = p_mt5.price_current
                     position.current_price = current_price
+                    position.profit = p_mt5.profit
                     
-                    # Calculate profit
+                    # Update SL/TP if they were changed manually in MT5
+                    if p_mt5.sl > 0 and position.stop_loss == 0:
+                        position.stop_loss = p_mt5.sl
+                    if p_mt5.tp > 0 and position.take_profit == 0:
+                        position.take_profit = p_mt5.tp
+                    
+                    # Calculate Pips/R effectively
                     point = self.symbol_manager.get_point(symbol)
-                    
-                    if position.order_type == "BUY":
-                        position.pips = (current_price - position.entry_price) / point
-                        profit_r = (current_price - position.entry_price) / position.initial_sl_dist if position.initial_sl_dist > 0 else 0
+                    if point > 0:
+                        if position.order_type == "BUY":
+                            position.pips = (current_price - position.entry_price) / point
+                            profit_r = (current_price - position.entry_price) / position.initial_sl_dist if position.initial_sl_dist > 0 else 0
+                        else:
+                            position.pips = (position.entry_price - current_price) / point
+                            profit_r = (position.entry_price - current_price) / position.initial_sl_dist if position.initial_sl_dist > 0 else 0
                     else:
-                        position.pips = (position.entry_price - current_price) / point
-                        profit_r = (position.entry_price - current_price) / position.initial_sl_dist if position.initial_sl_dist > 0 else 0
-                    
-                    position.profit = position.pips * self.symbol_manager.get_tick_value(symbol)
-                    
-                    # --- MANAGEMENT ---
+                        profit_r = 0
+
+                    # --- GESTÃO VIRTUAL ---
                     
                     # 1. Partial Take Profit (1.5R)
                     if not position.partial_taken and profit_r >= 1.5:
-                        logger.info(f"Taking Partial Profit (1.5R) for {symbol}")
-                        # Close 40%
-                        # Implementation Note: In real MT5, we would order_close_partial. 
-                        # Here we simulate by reducing volume.
-                        position.volume *= 0.6 # Remaining 60%
+                        logger.info(f"💰 [PARTIAL] 1.5R Atingido em {symbol}. Reduzindo 40% (Virtual Simulation)")
+                        # No MT5 Real, deveríamos fechar parcial. Aqui apenas marcamos e avisamos.
+                        # TODO: Implementar close_partial no trade_executor se necessário.
+                        position.volume *= 0.6
                         position.partial_taken = True
                     
                     # 2. Trailing Stop (2xATR)
-                    # We use initial_sl_dist as approximation for 2xATR
-                    ts_dist = position.initial_sl_dist 
-                    
-                    if position.order_type == "BUY":
-                        new_sl = current_price - ts_dist
-                        if new_sl > position.stop_loss:
-                            position.stop_loss = new_sl
-                            logger.debug(f"Trailing SL moved to {new_sl} for {symbol}")
-                    else:
-                        new_sl = current_price + ts_dist
-                        if new_sl < position.stop_loss:
-                            position.stop_loss = new_sl
-                            logger.debug(f"Trailing SL moved to {new_sl} for {symbol}")
-
-                    # --- CHECK CLOSURE ---
-
-                    # Check if position should be closed
-                    if (position.order_type == "BUY" and current_price <= position.stop_loss) or \
-                       (position.order_type == "SELL" and current_price >= position.stop_loss):
-                        # Stop loss hit
-                        logger.info(f"Stop loss atingido para {symbol}")
-                        closed_positions.append(symbol)
-                        # Update Daily Stats
-                        if position.profit > 0:
-                            self.strategy.daily_stats["wins"] += 1
-                        else:
-                            self.strategy.daily_stats["losses"] += 1
-                        self.strategy.daily_stats["profit"] += position.profit
+                    if position.initial_sl_dist > 0:
+                        ts_dist = position.initial_sl_dist 
                         
-                    elif (position.order_type == "BUY" and current_price >= position.take_profit) or \
-                         (position.order_type == "SELL" and current_price <= position.take_profit):
-                        # Take profit hit
-                        logger.info(f"Take profit atingido para {symbol}")
-                        closed_positions.append(symbol)
-                        # Update Daily Stats
-                        self.strategy.daily_stats["wins"] += 1
-                        self.strategy.daily_stats["profit"] += position.profit
-                
-                # Remove closed positions
+                        if position.order_type == "BUY":
+                            new_sl = current_price - ts_dist
+                            if new_sl > position.stop_loss:
+                                position.stop_loss = new_sl
+                                logger.debug(f"📈 [TRAILING] SL movido para {new_sl:.5f} em {symbol}")
+                        else:
+                            new_sl = current_price + ts_dist
+                            if new_sl < position.stop_loss:
+                                position.stop_loss = new_sl
+                                logger.debug(f"📉 [TRAILING] SL movido para {new_sl:.5f} em {symbol}")
+
+                    # --- CHECK CLOSURE (VIRTUAL vs SERVER) ---
+
+                    # Verifica se deve fechar (SL ou TP interno atingido)
+                    sl_hit = (position.order_type == "BUY" and current_price <= position.stop_loss and position.stop_loss > 0) or \
+                             (position.order_type == "SELL" and current_price >= position.stop_loss and position.stop_loss > 0)
+                    
+                    tp_hit = (position.order_type == "BUY" and current_price >= position.take_profit and position.take_profit > 0) or \
+                             (position.order_type == "SELL" and current_price <= position.take_profit and position.take_profit > 0)
+
+                    if sl_hit or tp_hit:
+                        reason = "STOP LOSS VIRTUAL" if sl_hit else "TAKE PROFIT VIRTUAL"
+                        logger.warning(f"🎯 [TRIGGER] {reason} atingido para {symbol} (Ticket: {position.ticket})")
+                        
+                        # EXECUÇÃO REAL DO FECHAMENTO
+                        if trade_executor.close_position(position.ticket, symbol):
+                            closed_positions.append(symbol)
+                            # Update Daily Stats
+                            if position.profit > 0:
+                                self.strategy.daily_stats["wins"] += 1
+                            else:
+                                self.strategy.daily_stats["losses"] += 1
+                            self.strategy.daily_stats["profit"] += position.profit
+                            
+                            # Notificação
+                            send_telegram_message(f"✅ *{reason} EXECUTADO*\nAtivo: `{symbol}`\nLucro: `${position.profit:.2f}`")
+
+                # Limpar memória
                 for symbol in closed_positions:
                     if symbol in self.positions:
                         del self.positions[symbol]
                         
         except Exception as e:
-            logger.error(f"Erro ao atualizar posições: {e}")
+            logger.error(f"Erro ao atualizar/sincronizar posições: {e}", exc_info=True)
 
     def close_all_positions(self):
         """Close all open positions (Kill Switch)"""
         with self.lock:
-            for symbol in list(self.positions.keys()):
-                position = self.positions[symbol]
-                logger.warning(f"Closing {symbol} (Ticket: {position.ticket}) due to Kill Switch")
-                if trade_executor.close_position(position.ticket, symbol):
-                    del self.positions[symbol]
-            logger.info("All positions closed.")
+            # Sync antes de fechar tudo para garantir que temos os tickets corretos
+            mt5_positions = mt5_exec(mt5.positions_get, magic=settings.MAGIC_NUMBER)
+            if mt5_positions:
+                for p in mt5_positions:
+                    logger.warning(f"Closing {p.symbol} (Ticket: {p.ticket}) due to Kill Switch")
+                    trade_executor.close_position(p.ticket, p.symbol)
+            
+            # Limpa memória local
+            self.positions.clear()
+            logger.info("All positions closed via Kill Switch.")
+
+    def display_summary_table(self):
+        """Exibe uma tabela formatada com as posições abertas no console"""
+        if not HAS_RICH or not self.console:
+            # Fallback simples se Rich não estiver disponível
+            if not self.positions:
+                print("\n[INFO] Nenhuma posição aberta no momento.")
+                return
+            print("\n--- POSIÇÕES ABERTAS ---")
+            for s, p in self.positions.items():
+                print(f"{s}: {p.order_type} | Vol: {p.volume:.2f} | Entry: {p.entry_price:.5f} | Profit: ${p.profit:.2f}")
+            return
+
+        from rich.table import Table
+        from rich.panel import Panel
+
+        if not self.positions:
+            self.console.print(Panel("[yellow]Nenhuma posição aberta no momento.[/]", title="XP3 STATUS", expand=False))
+            return
+
+        table = Table(title=f"XP3 PRO FOREX - POSIÇÕES ATIVAS ({datetime.now().strftime('%H:%M:%S')})", header_style="bold magenta")
+        
+        table.add_column("Símbolo", style="cyan", justify="left")
+        table.add_column("Tipo", style="bold")
+        table.add_column("Lote", justify="right")
+        table.add_column("Entrada", justify="right")
+        table.add_column("Atual", justify="right")
+        table.add_column("SL (Virtual)", style="red", justify="right")
+        table.add_column("TP (Virtual)", style="green", justify="right")
+        table.add_column("P&L ($)", justify="right", style="bold")
+
+        total_profit = 0
+        for symbol, p in self.positions.items():
+            type_style = "bold blue" if p.order_type == "BUY" else "bold red"
+            profit_style = "green" if p.profit >= 0 else "red"
+            
+            table.add_row(
+                symbol,
+                f"[{type_style}]{p.order_type}[/]",
+                f"{p.volume:.2f}",
+                f"{p.entry_price:.5f}",
+                f"{p.current_price:.5f}",
+                f"{p.stop_loss:.5f}" if p.stop_loss > 0 else "-",
+                f"{p.take_profit:.5f}" if p.take_profit > 0 else "-",
+                f"[{profit_style}]${p.profit:.2f}[/]"
+            )
+            total_profit += p.profit
+
+        # Footer com total
+        table.add_section()
+        total_style = "bold green" if total_profit >= 0 else "bold red"
+        table.add_row("TOTAL", "", "", "", "", "", "", f"[{total_style}]${total_profit:.2f}[/]")
+
+        self.console.print(table)
     
     def check_triple_swap_guard(self):
         """
@@ -460,6 +573,11 @@ class XP3Bot:
             try:
                 # Update positions
                 self.update_positions()
+
+                # --- Periodic Positions Report (5 min) ---
+                if time.time() - self.last_summary_table_time > 300:
+                    self.display_summary_table()
+                    self.last_summary_table_time = time.time()
 
                 # --- Periodic Why Report Scan (Visual) ---
                 if HAS_RICH and self.console and (time.time() - self.last_report_time > 60):
