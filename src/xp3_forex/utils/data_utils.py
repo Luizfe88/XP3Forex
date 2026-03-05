@@ -203,6 +203,7 @@ def init_database(db_path: str = "data/trades.db") -> bool:
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS trades (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticket INTEGER,
                 symbol TEXT NOT NULL,
                 order_type TEXT NOT NULL,
                 volume REAL NOT NULL,
@@ -220,6 +221,12 @@ def init_database(db_path: str = "data/trades.db") -> bool:
             )
         ''')
         
+        # Tentar adicionar coluna ticket se não existir (para bancos antigos)
+        try:
+            cursor.execute("ALTER TABLE trades ADD COLUMN ticket INTEGER")
+        except sqlite3.OperationalError:
+            pass # Já existe
+            
         # Criar tabela de performance
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS performance (
@@ -254,11 +261,12 @@ def save_trade(trade_data: Dict[str, Any], db_path: str = "data/trades.db") -> b
         
         cursor.execute('''
             INSERT INTO trades (
-                symbol, order_type, volume, entry_price, exit_price, 
+                ticket, symbol, order_type, volume, entry_price, exit_price, 
                 stop_loss, take_profit, entry_time, exit_time, 
                 profit, pips, status, magic_number, comment
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
+            trade_data.get('ticket'),
             trade_data.get('symbol'),
             trade_data.get('order_type'),
             trade_data.get('volume'),
@@ -282,6 +290,27 @@ def save_trade(trade_data: Dict[str, Any], db_path: str = "data/trades.db") -> b
     except Exception as e:
         logger.error(f"Erro ao salvar trade: {e}")
         return False
+
+def get_open_trades(db_path: str = "data/trades.db") -> List[Dict[str, Any]]:
+    """Obtém todas as trades com status 'open'"""
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM trades WHERE status = 'open'")
+        
+        columns = [description[0] for description in cursor.description]
+        trades = []
+        
+        for row in cursor.fetchall():
+            trade = dict(zip(columns, row))
+            trades.append(trade)
+            
+        conn.close()
+        return trades
+    except Exception as e:
+        logger.error(f"Erro ao buscar trades abertas: {e}")
+        return []
 
 def get_trade_history(symbol: Optional[str] = None, limit: int = 100, db_path: str = "data/trades.db") -> List[Dict[str, Any]]:
     """Obtém histórico de trades"""

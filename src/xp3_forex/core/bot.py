@@ -487,6 +487,41 @@ class XP3Bot:
             self.positions.clear()
             logger.info("All positions closed via Kill Switch.")
 
+    def load_open_trades(self):
+        """Carrega trades abertas do banco de dados (Virtual SL/TP)"""
+        try:
+            open_trades = get_open_trades()
+            if not open_trades:
+                return
+
+            logger.info(f"📂 Carregando {len(open_trades)} trades abertas do banco de dados...")
+            
+            with self.lock:
+                for t in open_trades:
+                    symbol = t['symbol']
+                    ticket = t['ticket']
+                    
+                    # Criamos o objeto posição a partir do banco (preserva SL/TP virtual)
+                    self.positions[symbol] = Position(
+                        symbol=symbol,
+                        order_type=t['order_type'],
+                        volume=t['volume'],
+                        entry_price=t['entry_price'],
+                        current_price=t['entry_price'], # Será atualizado pelo sync
+                        stop_loss=t['stop_loss'] if t['stop_loss'] is not None else 0,
+                        take_profit=t['take_profit'] if t['take_profit'] is not None else 0,
+                        profit=0,
+                        pips=0,
+                        open_time=datetime.fromisoformat(t['entry_time']) if isinstance(t['entry_time'], str) else datetime.now(),
+                        magic_number=t['magic_number'],
+                        initial_sl_dist=abs(t['entry_price'] - t['stop_loss']) if t['stop_loss'] and t['stop_loss'] > 0 else 0,
+                        partial_taken=False,
+                        ticket=ticket
+                    )
+                    logger.debug(f"✅ Memória de SL/TP Virtual restaurada para {symbol} (Ticket: {ticket})")
+        except Exception as e:
+            logger.error(f"Erro ao carregar trades abertas: {e}")
+
     def display_summary_table(self):
         """Exibe uma tabela formatada com as posições abertas no console"""
         if not HAS_RICH or not self.console:
@@ -737,6 +772,10 @@ class XP3Bot:
             if not self.initialize_mt5():
                 logger.error("Falha ao conectar ao MT5")
                 return False
+            
+            # Initialize Database and persistence
+            init_database()
+            self.load_open_trades()
             
             # Initialize Market Data (Apply Filters)
             if not self.initialize_market_data():
