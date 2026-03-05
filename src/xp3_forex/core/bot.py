@@ -218,12 +218,43 @@ class XP3Bot:
             return True
             
         return False
+        
+    def is_friday_block_active(self) -> bool:
+        """
+        🚫 Friday Block: Impede o envio de NOVAS ordens na Sexta-feira
+        após as 15:00 (Horário do Robô/BRT) para evitar risco de fim de semana (Gaps e spreads).
+        """
+        now = datetime.now()
+        # Sexta-feira é 4 em Python weekday()
+        if now.weekday() == 4 and now.hour >= 15:
+            return True
+        return False
+    
+    def check_friday_close_guard(self):
+        """
+        🛑 Friday Close Guard: Fecha TODAS as posições na Sexta-feira entre as 17:00 e 17:10 
+        (Horário do Robô/BRT) para não passar o final de semana posicionado.
+        """
+        now = datetime.now() 
+        
+        if now.weekday() == 4: # Sexta-feira
+            if now.hour == 17 and 0 <= now.minute < 10:
+                if self.positions:
+                    logger.warning("🛑 FRIDAY CLOSE GUARD: Fechando todas as posições antes do fechamento do mercado (Evitando Gaps de Fim de Semana)...")
+                    
+                    if not getattr(self, '_friday_close_notified_today', False):
+                        send_telegram_message("🛑 *Friday Close Guard Ativado*\nFechando todas as posições abertas para não zerar a conta com gaps de segunda-feira.")
+                        self._friday_close_notified_today = True
+                        
+                    self.close_all_positions()
+            else:
+                self._friday_close_notified_today = False
     
     def analyze_symbol(self, symbol: str, timeframe: int, df: pd.DataFrame) -> Optional[TradeSignal]:
         """Analyze a symbol and generate trading signal using provided DataFrame"""
         try:
             # 0. Rollover Pause Check (Institutional)
-            if self.is_in_rollover_pause():
+            if self.is_in_rollover_pause() or self.is_friday_block_active():
                 # Silencioso para não poluir logs, mas bloqueia novas entradas
                 return None
 
@@ -347,9 +378,6 @@ class XP3Bot:
                     logger.debug("Falha ao sincronizar posições com MT5 (None returned)")
                     return
 
-                # Converter para dicionário por Ticket para busca rápida
-                real_tickets = {p.ticket: p for p in mt5_positions}
-
                 # a) Remover da memória o que não existe mais no MT5
                 for symbol in list(self.positions.keys()):
                     pos = self.positions[symbol]
@@ -460,6 +488,9 @@ class XP3Bot:
                                 self.strategy.daily_stats["wins"] += 1
                             else:
                                 self.strategy.daily_stats["losses"] += 1
+                                # Registra no Trade Executor para o cooldown pós-loss
+                                trade_executor.register_loss(symbol)
+                                
                             self.strategy.daily_stats["profit"] += position.profit
                             
                             # Notificação
@@ -698,6 +729,9 @@ class XP3Bot:
                 
                 # --- Triple Swap Guard (Wed 17:45 BRT) ---
                 self.check_triple_swap_guard()
+                
+                # --- Friday Close Guard (Fri 17:00 BRT) ---
+                self.check_friday_close_guard()
 
             except Exception as e:
                 logger.error(f"Erro no consumer_loop: {e}")

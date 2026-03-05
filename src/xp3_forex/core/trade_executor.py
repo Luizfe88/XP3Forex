@@ -131,11 +131,20 @@ class TradeExecutor:
                     logger.error(health["reason"])
                 return False
 
-        # 3. Symbol Cooldown
+        # 3. Symbol Cooldown (Anti-Flood Padrão)
         if now - self.last_trade_attempt.get(symbol, 0) < self.COOLDOWN_SECONDS:
             if not silent:
                 logger.warning(f"⏳ Cooldown ativo para {symbol}. Aguarde...")
             return False
+            
+        # 3.1. Symbol Loss Cooldown (Post Stop-Loss Delay)
+        loss_cooldown_seconds = getattr(settings, "LOSS_COOLDOWN_MINUTES", 60) * 60
+        if symbol in self.last_loss_time:
+            time_since_loss = now - self.last_loss_time[symbol]
+            if time_since_loss < loss_cooldown_seconds:
+                if not silent:
+                    logger.warning(f"⏳ Cooldown PÓS-LOSS ativo para {symbol}. Faltam {(loss_cooldown_seconds - time_since_loss)/60:.1f} minutos.")
+                return False
 
         # 4. Max Trades (Check MT5 positions)
         if self.mode in ["live", "demo"]:
@@ -682,6 +691,10 @@ class TradeExecutor:
                 f"🚨 CIRCUIT BREAKER ATIVADO: 5 falhas consecutivas. Trading pausado por 10min."
             )
 
+    def register_loss(self, symbol: str):
+        """Registra o momento em que um trade foi fechado com prejuízo (Loss) para ativar o cooldown"""
+        self.last_loss_time[symbol] = time.time()
+        logger.info(f"🛑 Registrado Loss em {symbol}. Entrando em cooldown por {getattr(settings, 'LOSS_COOLDOWN_MINUTES', 60)} min.")
 
 # Instância Global
 trade_executor = TradeExecutor()
