@@ -256,8 +256,9 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
 
             # 4. Multi-Timeframe Confirmation (H1)
             if signal_type:
-                if not self.check_h1_trend(symbol, signal_type):
-                    # logger.info(f"Signal {signal_type} for {symbol} rejected by H1 Trend")
+                h1_ok = self.check_h1_trend(symbol, signal_type)
+                if not h1_ok:
+                    logger.info(f"🚫 Signal {signal_type} for {symbol} rejected by H1 Trend (EMA200 Conflict)")
                     return None
 
             # 5. Create Signal
@@ -344,6 +345,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             
         # News Filter
         if self.is_high_impact_news_soon(symbol):
+            logger.info(f"🚫 Trade rejected for {symbol} due to High Impact News soon")
             return False
             
         return True
@@ -698,6 +700,26 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                  session_ok,
                  "Horário operacional verificado",
                  "Mercado fechado ou sem liquidez" if not session_ok else "")
+
+        # E. Filtro H1 (Novo no Relatório)
+        h1_ok = self.check_h1_trend(symbol, direction)
+        add_cond("Trend H1 OK (EMA200)",
+                 "Alinhada" if h1_ok else "Contra",
+                 "Alinhada",
+                 h1_ok,
+                 "Trend H1 confirma direção",
+                 "H1 está em contratendência" if not h1_ok else "")
+
+        # F. Institutional / Risk (Novo no Relatório)
+        max_pos = settings.MAX_POSITIONS
+        current_pos = len(self.bot.positions)
+        pos_ok = current_pos < max_pos
+        add_cond("Vaga no Portfólio",
+                 f"{current_pos}/{max_pos}",
+                 f"< {max_pos}",
+                 pos_ok,
+                 "Espaço para novas ordens",
+                 "Limite de posições atingido" if not pos_ok else "")
 
         # 3. Construção do Painel
         confidence = (score / max_score) * 100 if max_score > 0 else 0

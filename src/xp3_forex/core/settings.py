@@ -126,7 +126,7 @@ class Settings(BaseSettings):
     SESSION_NY: SessionMetricsConfig = SessionMetricsConfig(
         name="NY",
         start_time_utc="13:00",
-        end_time_utc="21:00",
+        end_time_utc="22:00",
         min_profit_factor=2.0,
         min_win_rate=0.55,
         description="Altíssima volatilidade e notícias macro (Overlap Londres)."

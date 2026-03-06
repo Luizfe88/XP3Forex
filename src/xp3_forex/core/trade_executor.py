@@ -58,6 +58,9 @@ class TradeExecutor:
         self.consecutive_failures = 0
         self.CIRCUIT_BREAKER_LIMIT = 20 # Increased for debugging Silver issues
         self.circuit_breaker_until = 0.0
+        
+        # Loss Cooldown State
+        self.last_loss_time: Dict[str, float] = {}
 
         logger.info(f"TradeExecutor inicializado em modo: {self.mode.upper()}")
 
@@ -134,7 +137,7 @@ class TradeExecutor:
         # 3. Symbol Cooldown (Anti-Flood Padrão)
         if now - self.last_trade_attempt.get(symbol, 0) < self.COOLDOWN_SECONDS:
             if not silent:
-                logger.warning(f"⏳ Cooldown ativo para {symbol}. Aguarde...")
+                logger.warning(f"⏳ Cooldown (Anti-Flood) ativo para {symbol}. Aguarde {self.COOLDOWN_SECONDS - (now - self.last_trade_attempt[symbol]):.1f}s.")
             return False
             
         # 3.1. Symbol Loss Cooldown (Post Stop-Loss Delay)

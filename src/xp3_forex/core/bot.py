@@ -254,8 +254,12 @@ class XP3Bot:
         """Analyze a symbol and generate trading signal using provided DataFrame"""
         try:
             # 0. Rollover Pause Check (Institutional)
-            if self.is_in_rollover_pause() or self.is_friday_block_active():
-                # Silencioso para não poluir logs, mas bloqueia novas entradas
+            if self.is_in_rollover_pause():
+                # logger.debug(f"Skipping {symbol}: Rollover Pause Active")
+                return None
+            
+            if self.is_friday_block_active():
+                # logger.debug(f"Skipping {symbol}: Friday Block Active")
                 return None
 
             # 0. Cooldown / Sanity Check (FAIL FAST)
@@ -296,12 +300,12 @@ class XP3Bot:
                 
                 # Check if we already have a position for this symbol
                 if signal.symbol in self.positions:
-                    # logger.info(f"Posição já existe para {signal.symbol}")
+                    logger.debug(f"Posição já existe para {signal.symbol}. Ignorando duplicata.")
                     return False
                 
                 # Check max positions
                 if len(self.positions) >= settings.MAX_POSITIONS:
-                    # logger.info("Máximo de posições atingido")
+                    logger.warning(f"🚫 Máximo de posições atingido ({len(self.positions)}/{settings.MAX_POSITIONS}). Ignorando sinal p/ {signal.symbol}")
                     return False
                 
                 # 2. Get Why Report for Logs (Institutional Requirement)
@@ -377,6 +381,9 @@ class XP3Bot:
                     # Mas se retornar [] (vazio), significa que nada está aberto.
                     logger.debug("Falha ao sincronizar posições com MT5 (None returned)")
                     return
+
+                # Converter para dicionário por Ticket para busca rápida
+                real_tickets = {p.ticket: p for p in mt5_positions}
 
                 # a) Remover da memória o que não existe mais no MT5
                 for symbol in list(self.positions.keys()):
