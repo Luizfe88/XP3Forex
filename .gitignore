@@ -33,7 +33,7 @@ coverage.xml
 *.cover
 .hypothesis/
 .mypy_cache/
-
+*.tmp
 # VIRTUAL ENVIRONMENTS ======================================================
 .env
 .venv
@@ -384,3 +384,24 @@ src/xp3_forex/core/bot.py
 .tmp.driveupload/177930
 .tmp.driveupload/177932
 .tmp.driveupload/177936
+.tmp.driveupload/178284
+.tmp.driveupload/178286
+.tmp.driveupload/178288
+.tmp.driveupload/178290
+.tmp.driveupload/178292
+.tmp.driveupload/178296
+.tmp.driveupload/178298
+.tmp.driveupload/178300
+.tmp.driveupload/178302
+.tmp.driveupload/178306
+.tmp.driveupload/178308
+.tmp.driveupload/178312
+.tmp.driveupload/178314
+.tmp.driveupload/178318
+.tmp.driveupload/178320
+.tmp.driveupload/178322
+.tmp.driveupload/178324
+.tmp.driveupload/178326
+.tmp.driveupload/178328
+.tmp.driveupload/178330
+.tmp.driveupload/178332

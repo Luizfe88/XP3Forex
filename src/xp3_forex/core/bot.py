@@ -420,59 +420,52 @@ class XP3Bot:
                 # 2. Processar Lógica de Gerenciamento (Virtual SL/TP/Trailing)
                 closed_positions = []
                 
+                # Get current DF for exit evaluation (efficiency: fetch only once per symbol)
                 for symbol, position in self.positions.items():
                     # Get actual MT5 position data for this ticket
                     p_mt5 = real_tickets.get(position.ticket)
                     if not p_mt5:
-                        continue # Já removido ou em processo de fechamento
-
-                    # Update position with fresh MT5 data
+                        continue 
+                    
+                    # Update position local state
                     current_price = p_mt5.price_current
                     position.current_price = current_price
                     position.profit = p_mt5.profit
+
+                    # --- GESTÃO DINÂMICA (NOVO) ---
                     
-                    # Update SL/TP if they were changed manually in MT5
-                    if p_mt5.sl > 0 and position.stop_loss == 0:
-                        position.stop_loss = p_mt5.sl
-                    if p_mt5.tp > 0 and position.take_profit == 0:
-                        position.take_profit = p_mt5.tp
+                    # A. Evaluate Dynamic Exit (Exhaustion/Reversal)
+                    # Fetch fresh data for evaluation
+                    df_eval = self.cache.get_rates(symbol, 15, 50)
+                    should_exit, exit_reason = self.strategy.evaluate_exit(position, df_eval)
                     
-                    # Calculate Pips/R effectively
+                    if should_exit:
+                        logger.warning(f"🚀 [DYNAMIC EXIT] {exit_reason} em {symbol} (Ticket: {position.ticket})")
+                        if trade_executor.close_position(position.ticket, symbol):
+                            closed_positions.append(symbol)
+                            self._update_stats_after_close(position)
+                            send_telegram_message(f"🚀 *DYNAMIC EXIT EXECUTADO*\nAtivo: `{symbol}`\nMotivo: `{exit_reason}`\nLucro: `${position.profit:.2f}`")
+                            continue
+
+                    # B. Proactive Break-Even (BE) Management
+                    # Determine Pips or R
                     point = self.symbol_manager.get_point(symbol)
                     if point > 0:
                         if position.order_type == "BUY":
-                            position.pips = (current_price - position.entry_price) / point
                             profit_r = (current_price - position.entry_price) / position.initial_sl_dist if position.initial_sl_dist > 0 else 0
                         else:
-                            position.pips = (position.entry_price - current_price) / point
                             profit_r = (position.entry_price - current_price) / position.initial_sl_dist if position.initial_sl_dist > 0 else 0
                     else:
                         profit_r = 0
 
-                    # --- GESTÃO VIRTUAL ---
-                    
-                    # 1. Partial Take Profit (1.5R)
-                    if not position.partial_taken and profit_r >= 1.5:
-                        logger.info(f"💰 [PARTIAL] 1.5R Atingido em {symbol}. Reduzindo 40% (Virtual Simulation)")
-                        # No MT5 Real, deveríamos fechar parcial. Aqui apenas marcamos e avisamos.
-                        # TODO: Implementar close_partial no trade_executor se necessário.
-                        position.volume *= 0.6
-                        position.partial_taken = True
-                    
-                    # 2. Trailing Stop (2xATR)
-                    if position.initial_sl_dist > 0:
-                        ts_dist = position.initial_sl_dist 
-                        
-                        if position.order_type == "BUY":
-                            new_sl = current_price - ts_dist
-                            if new_sl > position.stop_loss:
-                                position.stop_loss = new_sl
-                                logger.debug(f"📈 [TRAILING] SL movido para {new_sl:.5f} em {symbol}")
-                        else:
-                            new_sl = current_price + ts_dist
-                            if new_sl < position.stop_loss:
-                                position.stop_loss = new_sl
-                                logger.debug(f"📉 [TRAILING] SL movido para {new_sl:.5f} em {symbol}")
+                    if profit_r >= 1.5:
+                        # Move SL to Entry + small buffer (Break-Even)
+                        if position.order_type == "BUY" and position.stop_loss < position.entry_price:
+                            position.stop_loss = position.entry_price
+                            logger.info(f"🛡️ [BREAK-EVEN] SL movido para a entrada para {symbol} (1.5R alcançado)")
+                        elif position.order_type == "SELL" and position.stop_loss > position.entry_price:
+                            position.stop_loss = position.entry_price
+                            logger.info(f"🛡️ [BREAK-EVEN] SL movido para a entrada para {symbol} (1.5R alcançado)")
 
                     # --- CHECK CLOSURE (VIRTUAL vs SERVER) ---
 
@@ -503,13 +496,22 @@ class XP3Bot:
                             # Notificação
                             send_telegram_message(f"✅ *{reason} EXECUTADO*\nAtivo: `{symbol}`\nLucro: `${position.profit:.2f}`")
 
-                # Limpar memória
+                # Clear memory
                 for symbol in closed_positions:
                     if symbol in self.positions:
                         del self.positions[symbol]
                         
         except Exception as e:
             logger.error(f"Erro ao atualizar/sincronizar posições: {e}", exc_info=True)
+
+    def _update_stats_after_close(self, position: Position):
+        """Helper para atualizar estatísticas após fechamento"""
+        if position.profit > 0:
+            self.strategy.daily_stats["wins"] += 1
+        else:
+            self.strategy.daily_stats["losses"] += 1
+            trade_executor.register_loss(position.symbol)
+        self.strategy.daily_stats["profit"] += position.profit
 
     def close_all_positions(self):
         """Close all open positions (Kill Switch)"""

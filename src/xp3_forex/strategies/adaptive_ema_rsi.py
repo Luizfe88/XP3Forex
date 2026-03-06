@@ -268,8 +268,16 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 if np.isnan(atr) or atr == 0:
                      atr = 0.0010 # Fallback
                      
+                # Adaptive ATR Multipliers by Regime
                 atr_mult_sl = session_params.get("atr_multiplier_sl", 2.0)
-                atr_mult_tp = session_params.get("atr_multiplier_tp", 3.0)
+                
+                # Dynamic TP based on Regime
+                if regime.name in ["strong_uptrend", "strong_downtrend"]:
+                    atr_mult_tp = 4.0 # Extended TP for strong trends
+                elif regime.name == "ranging":
+                    atr_mult_tp = 2.0 # Quicker TP for ranges
+                else:
+                    atr_mult_tp = session_params.get("atr_multiplier_tp", 3.0)
                 
                 sl_dist = atr_mult_sl * atr
                 
@@ -403,9 +411,39 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         from .session_analyzer import get_active_session_name
         return get_active_session_name(datetime.utcnow()) != "UNKNOWN"
 
-    def is_high_impact_news_soon(self, symbol: str) -> bool:
+    @staticmethod
+    def is_high_impact_news_soon(symbol: str) -> bool:
         # Placeholder
         return False
+
+    def evaluate_exit(self, position: Position, df: pd.DataFrame) -> Tuple[bool, str]:
+        """
+        Avalia se uma posição deve ser encerrada precocemente.
+        Retorna (deve_fechar, motivo).
+        """
+        try:
+            if df is None or len(df) < 20:
+                return False, ""
+            
+            # 1. Trend Exhaustion (RSI Extremo)
+            # Recalculate RSI to ensure fresh data
+            rsi = ta.rsi(df['close'], length=14).iloc[-1]
+            
+            if position.order_type == "BUY":
+                if rsi > 75:
+                    return True, "RSI Overbought Exhaustion (>75)"
+            else: # SELL
+                if rsi < 25:
+                    return True, "RSI Oversold Exhaustion (<25)"
+            
+            # 2. Reversal Signals (EMA Crossover contrário)
+            # This is more aggressive, but let's keep it subtle for now
+            # Only if RSI is already near neutral/extreme
+            
+            return False, ""
+        except Exception as e:
+            logger.error(f"Error evaluating exit for {position.symbol}: {e}")
+            return False, ""
 
     def get_account_balance(self) -> float:
         try:
