@@ -58,6 +58,7 @@ from ..strategies.adaptive_ema_rsi import AdaptiveEmaRsiStrategy
 from ..optimization.learner import DailyLearner
 from ..reporting.daily_report import DailyReportGenerator
 from ..utils.telegram_utils import send_telegram_message, send_telegram_document
+from ..utils.process_watcher import ProcessWatcher
 
 logger = logging.getLogger("XP3_BOT")
 
@@ -114,6 +115,9 @@ class XP3Bot:
         self.learner = DailyLearner(self.symbols)
         self.report_gen = DailyReportGenerator()
         self.last_summary_table_time = 0  # Timer para o relatório de 5 min
+        
+        # Batching Logic (NEW)
+        self.pending_signals: List[TradeSignal] = []
         
         logger.info(f"🚀 XP3 PRO FOREX BOT v5.0 INSTITUCIONAL Inicializado")
         logger.info(f"Symbols: {self.symbols}")
@@ -179,6 +183,11 @@ class XP3Bot:
                     logger.error("❌ MT5 detectado mas 'ALGO TRADING' está DESLIGADO no terminal.")
                     return False
                 return True
+            
+            # Check if MT5 is already open manually
+            if settings.AUTO_CLOSE_ON_MT5 and ProcessWatcher.is_mt5_running():
+                logger.critical("🛑 Detectado que o MetaTrader 5 já está aberto manualmente. O robô não será iniciado para evitar conflitos.")
+                return False
 
             success = initialize_mt5(
                 settings.MT5_LOGIN,
@@ -653,6 +662,13 @@ class XP3Bot:
                 if time.time() - self.last_summary_table_time > 300:
                     self.display_summary_table()
                     self.last_summary_table_time = time.time()
+                
+                # --- Auto Close Guard (MT5 Manual Activity) ---
+                if settings.AUTO_CLOSE_ON_MT5 and ProcessWatcher.is_mt5_running():
+                    logger.critical("🛑 MetaTrader 5 aberto manualmente detectado! Encerrando robô conforme configuração AUTO_CLOSE_ON_MT5.")
+                    send_telegram_message("🛑 *Auto-shutdown Ativado*\nTerminal MT5 aberto manualmente detectado. Encerrando robô para segurança.")
+                    SHUTDOWN_EVENT.set()
+                    break
 
                 # --- Periodic Why Report Scan (Visual) ---
                 if HAS_RICH and self.console and (time.time() - self.last_report_time > 60):
@@ -719,10 +735,17 @@ class XP3Bot:
                     # Non-blocking get or short timeout
                     symbol, timeframe, df = self.data_queue.get(timeout=1)
                     
-                    # Analyze
-                    signal = self.analyze_symbol(symbol, timeframe, df)
-                    if signal:
-                        self.execute_trade(signal)
+                    if symbol == "CYCLE_COMPLETE":
+                        self.process_batch_signals()
+                    else:
+                        # Analyze
+                        signal = self.analyze_symbol(symbol, timeframe, df)
+                        if signal:
+                            with self.lock:
+                                # Avoid duplicate symbols in the same batch
+                                self.pending_signals = [s for s in self.pending_signals if s.symbol != signal.symbol]
+                                self.pending_signals.append(signal)
+                                logger.debug(f"📝 Sinal acumulado para batch: {signal.symbol} (Conf: {signal.confidence:.2f})")
                         
                     self.data_queue.task_done()
                     
@@ -750,6 +773,39 @@ class XP3Bot:
             time.sleep(1.0)
                 
         logger.info("🛑 Consumer Loop finalizado")
+
+    def process_batch_signals(self):
+        """
+        Processes accumulated signals: sorts by confidence and executes the best ones
+        up to the maximum positions limit.
+        """
+        if not self.pending_signals:
+            return
+
+        with self.lock:
+            # 1. Sort by confidence (descending)
+            self.pending_signals.sort(key=lambda x: x.confidence, reverse=True)
+            
+            logger.info(f"⚖️ Processando BATCH de {len(self.pending_signals)} sinais encontrados no ciclo.")
+            
+            # 2. Iterate and execute
+            executed_count = 0
+            for signal in self.pending_signals:
+                # Execution method will check MAX_POSITIONS internally, 
+                # but we can do a pre-check to log better.
+                if len(self.positions) >= settings.MAX_POSITIONS:
+                    logger.warning(f"🚫 Limite de posições ({settings.MAX_POSITIONS}) atingido no meio do batch. Descartando sinais restantes.")
+                    break
+                
+                logger.info(f"🎯 Selecionado: {signal.symbol} com confiança {signal.confidence:.2f}")
+                if self.execute_trade(signal):
+                    executed_count += 1
+            
+            # 3. Clear batch
+            self.pending_signals.clear()
+            
+            if executed_count > 0:
+                logger.info(f"✅ Batch finalizado: {executed_count} ordens enviadas.")
 
     def pause_trading(self):
         """Pausa o trading (consumer e feeder)"""

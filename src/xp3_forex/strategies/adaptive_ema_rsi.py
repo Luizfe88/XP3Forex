@@ -23,7 +23,7 @@ except ImportError:
 
 from .base_strategy import BaseStrategy
 from ..core.settings import settings, ELITE_CONFIG
-from ..core.models import TradeSignal
+from ..core.models import TradeSignal, Position
 from ..utils.mt5_utils import get_symbol_info
 from ..utils.indicators import calculate_atr
 from ..utils.calculations import calculate_sl_tp, calculate_lot_size, get_pip_size
@@ -261,8 +261,43 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                     logger.info(f"🚫 Signal {signal_type} for {symbol} rejected by H1 Trend (EMA200 Conflict)")
                     return None
 
-            # 5. Create Signal
+            # 5. Calculate Confidence (Detailed)
+            confidence = 0.5 # Base
             if signal_type:
+                score = 0
+                max_score = 6 # Trend, Trigger, RSI, ADX, H1, Spread
+                
+                # 1. Trend (Already checked by crossovers but let's re-verify)
+                if (signal_type == "BUY" and ema_fast > ema_slow) or (signal_type == "SELL" and ema_fast < ema_slow):
+                    score += 1
+                
+                # 2. Trigger Strength (Crossover > Pullback)
+                if crossed_up or crossed_down:
+                    score += 1
+                elif (signal_type == "BUY" and current_price > ema_fast) or (signal_type == "SELL" and current_price < ema_fast):
+                    score += 0.5 # Weak trigger
+                
+                # 3. RSI Position
+                if signal_type == "BUY":
+                    if rsi > rsi_buy_thresh + 10: score += 1
+                    elif rsi > rsi_buy_thresh: score += 0.5
+                else: 
+                    if rsi < rsi_sell_thresh - 10: score += 1
+                    elif rsi < rsi_sell_thresh: score += 0.5
+                
+                # 4. ADX Strength
+                if adx > 35: score += 1
+                elif adx > 25: score += 0.5
+                
+                # 5. H1 Alignment
+                if h1_ok: score += 1
+                
+                # 6. Spread (Already checked in bot/feeder but good for confidence)
+                if self.symbol_manager.check_spread(symbol):
+                    score += 1
+                
+                confidence = score / max_score
+
                 # Calculate ATR for SL/TP
                 atr = df.ta.atr(length=14).iloc[-1]
                 if np.isnan(atr) or atr == 0:
@@ -304,7 +339,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                     stop_loss=sl,
                     take_profit=tp,
                     volume=volume,
-                    confidence=0.85,
+                    confidence=confidence,
                     reason=f"{session_params.get('active_session', 'N/A')} | {regime.name} | EMA({fast_period},{slow_period}) | RSI {rsi:.1f}"
                 )
         except Exception as e:

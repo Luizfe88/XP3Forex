@@ -72,6 +72,12 @@ class DataFeeder(threading.Thread):
                         logger.error(f"Erro no Data Feeder para {symbol}: {e}")
                         self.symbol_manager.report_failure(symbol)
             
+            # Signal end of cycle
+            try:
+                self.data_queue.put(("CYCLE_COMPLETE", None, None), timeout=1)
+            except queue.Full:
+                pass
+
             # Pequena pausa para não saturar CPU (FAIL FAST)
             time.sleep(1.0)
 

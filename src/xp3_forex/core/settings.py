@@ -140,7 +140,7 @@ class Settings(BaseSettings):
     FORCE_EXECUTION: bool = Field(default=False, description="Bypass filtros para testes (DEBUG ONLY)")
     RETRY_ATTEMPTS: int = Field(default=5, description="Tentativas de envio de ordem")
     RETRY_BACKOFF: float = Field(default=2.0, description="Backoff exponencial (segundos)")
-    MAX_POSITIONS: int = Field(default=5, description="Máximo de posições simultâneas")
+    MAX_POSITIONS: int = Field(default=8, description="Máximo de posições simultâneas")
     MAX_DAILY_LOSS_PERCENT: float = Field(default=3.0, description="Perda máxima diária (%)")
     KILL_SWITCH_DD_PCT: float = Field(default=0.05, description="Kill Switch se DD Global > X% (0.05 = 5%)")
     LOSS_COOLDOWN_MINUTES: int = Field(default=60, description="Minutos de pausa após um Stop Loss no mesmo ativo")
@@ -176,6 +176,7 @@ class Settings(BaseSettings):
     NEWS_BLOCK_MINUTES_BEFORE: int = Field(default=30, description="Minutos antes da notícia para bloquear")
     NEWS_BLOCK_MINUTES_AFTER: int = Field(default=30, description="Minutos depois da notícia para bloquear")
     NEWS_IMPACT_LEVELS: List[str] = Field(default=["High", "Critical"], description="Níveis de impacto para filtrar")
+    AUTO_CLOSE_ON_MT5: bool = Field(default=False, description="Fechar bot automaticamente quando o MT5 for aberto manualmente")
 
     # ===========================
     # 6. SYSTEM & LOGGING

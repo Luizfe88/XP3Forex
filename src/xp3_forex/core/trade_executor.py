@@ -52,7 +52,7 @@ class TradeExecutor:
         # Rate Limiting State
         self.last_trade_attempt: Dict[str, float] = {}
         self.COOLDOWN_SECONDS = 15.0
-        self.MAX_CONCURRENT_TRADES = 6
+        self.MAX_CONCURRENT_TRADES = 8
 
         # Circuit Breaker State (Error Tracking)
         self.consecutive_failures = 0
@@ -611,10 +611,16 @@ class TradeExecutor:
     def close_position(self, ticket: int, symbol: str) -> bool:
         """
         Fecha uma posição específica no MT5 pelo seu ticket.
+        Inclui lógica de retry para timeouts e erros recuperáveis.
         """
         if self.mode not in ["live", "demo"]:
             logger.info(f"🧪 [SIMULAÇÃO] Posição {ticket} de {symbol} fechada.")
             return True
+
+        # Check connection
+        if not mt5.terminal_info().connected:
+            logger.error("❌ Falha crítica: MT5 desconectado ao tentar fechar posição.")
+            return False
 
         position = mt5.positions_get(ticket=ticket)
         if not position or len(position) == 0:
@@ -626,64 +632,100 @@ class TradeExecutor:
         volume = pos.volume
         order_type = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
         
-        # Get current price
-        tick = symbol_manager.get_tick(symbol)
-        if not tick:
-            logger.error(f"❌ Falha ao obter preço para fechar {symbol}.")
-            return False
-            
-        price = tick.bid if order_type == mt5.ORDER_TYPE_SELL else tick.ask
-        
         # Get symbol info for filling mode and digits
         sym_info = mt5.symbol_info(symbol)
-        digits = sym_info.digits if sym_info else 5
+        if not sym_info:
+            logger.error(f"❌ Falha ao obter info do símbolo {symbol} para fechar.")
+            return False
+            
+        digits = sym_info.digits
         
         # Auto-detect filling mode
         filling_mode = mt5.ORDER_FILLING_IOC
-        if sym_info:
-            fm = sym_info.filling_mode
-            if fm & 2: filling_mode = mt5.ORDER_FILLING_IOC
-            elif fm & 4: filling_mode = mt5.ORDER_FILLING_RETURN
-            elif fm & 1: filling_mode = mt5.ORDER_FILLING_FOK
+        fm = sym_info.filling_mode
+        if fm & 2: filling_mode = mt5.ORDER_FILLING_IOC
+        elif fm & 4: filling_mode = mt5.ORDER_FILLING_RETURN
+        elif fm & 1: filling_mode = mt5.ORDER_FILLING_FOK
 
-        request_price = float(round(price, digits))
-        if sym_info and sym_info.trade_exemode == 2:
-            logger.info(f"⚖️ Market Execution detectado para fechar {symbol}. Usando preço 0.0.")
-            request_price = 0.0
+        # Retry Logic
+        attempts = getattr(settings, "RETRY_ATTEMPTS", 5)
+        backoff_base = getattr(settings, "RETRY_BACKOFF", 2.0)
 
-        request = {
-            "action": mt5.TRADE_ACTION_DEAL,
-            "symbol": symbol,
-            "volume": float(volume),
-            "type": order_type,
-            "position": ticket,
-            "price": request_price,
-            "deviation": settings.MAX_SLIPPAGE,
-            "magic": settings.MAGIC_NUMBER,
-            "comment": "XP3: CLOSE POS",
-            "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": filling_mode,
-        }
-
-        # CRITICAL: Direct call instead of mt5_exec (same thread requirement for C-extension)
-        result = mt5.order_send(request)
-        
-        # Fallback if 10013 occurs and we didn't use 0.0 yet
-        if result and result.retcode == 10013 and request_price != 0.0:
-            logger.warning(f"⚠️ Erro 10013 ao fechar {symbol}. Retentando Fallback com price=0.0")
-            request["price"] = 0.0
-            result = mt5.order_send(request)
-        
-        if result is None:
-            logger.error(f"❌ Falha crítica ao fechar posição {ticket} (MT5 None)")
-            return False
+        for attempt in range(attempts):
+            # Get current price on each attempt to avoid stale prices
+            tick = symbol_manager.get_tick(symbol)
+            if not tick:
+                logger.warning(f"⚠️ Falha ao obter preço para fechar {symbol} na tentativa {attempt+1}. Retentando...")
+                time.sleep(backoff_base)
+                continue
+                
+            price = tick.bid if order_type == mt5.ORDER_TYPE_SELL else tick.ask
+            request_price = float(round(price, digits))
             
-        if result.retcode == mt5.TRADE_RETCODE_DONE:
-            logger.info(f"✅ Posição {ticket} ({symbol}) FECHADA com sucesso.")
-            return True
-        else:
-            logger.error(f"❌ Falha ao fechar posição {ticket}: {result.retcode} ({result.comment})")
-            return False
+            # Market Execution handling
+            if sym_info.trade_exemode == 2: # SYMBOL_TRADE_EXEMODE_MARKET
+                if attempt == 0:
+                    logger.info(f"⚖️ Market Execution detectado para fechar {symbol}. Usando preço 0.0.")
+                request_price = 0.0
+
+            request = {
+                "action": mt5.TRADE_ACTION_DEAL,
+                "symbol": symbol,
+                "volume": float(volume),
+                "type": order_type,
+                "position": ticket,
+                "price": request_price,
+                "deviation": settings.MAX_SLIPPAGE,
+                "magic": settings.MAGIC_NUMBER,
+                "comment": "XP3: CLOSE POS",
+                "type_time": mt5.ORDER_TIME_GTC,
+                "type_filling": filling_mode,
+            }
+
+            # CRITICAL: Direct call instead of mt5_exec (same thread requirement for C-extension)
+            result = mt5.order_send(request)
+            
+            if result is None:
+                last_err = mt5.last_error()
+                logger.error(f"❌ mt5.order_send (CLOSE) retornou None | Tentativa {attempt + 1}/{attempts} | Last Error={last_err}")
+                if attempt < (attempts - 1):
+                    time.sleep(backoff_base * (2**attempt))
+                    continue
+                return False
+
+            if result.retcode == mt5.TRADE_RETCODE_DONE:
+                logger.info(f"✅ Posição {ticket} ({symbol}) FECHADA com sucesso (Tentativa {attempt+1}).")
+                return True
+                
+            # Fallback for Error 10013 (Invalid Request) - Some brokers require price 0.0 even if not explicitly Market Execution
+            if result.retcode == 10013 and request_price != 0.0:
+                logger.warning(f"⚠️ Erro 10013 ao fechar {symbol}. Tentando FALLBACK com price=0.0")
+                request["price"] = 0.0
+                result = mt5.order_send(request)
+                if result and result.retcode == mt5.TRADE_RETCODE_DONE:
+                    logger.info(f"✅ Posição {ticket} ({symbol}) FECHADA via Fallback.")
+                    return True
+
+            # Recoverable Errors
+            if result.retcode in [
+                mt5.TRADE_RETCODE_TIMEOUT,
+                mt5.TRADE_RETCODE_REQUOTE,
+                mt5.TRADE_RETCODE_PRICE_OFF,
+                mt5.TRADE_RETCODE_PRICE_CHANGED,
+                10004, 10012, 10015, 10016, 10021
+            ]:
+                logger.warning(f"⚠️ Erro recuperável ao fechar {symbol} ({result.retcode}: {result.comment}). Tentando {attempt + 1}/{attempts}...")
+                if attempt < (attempts - 1):
+                    wait_time = backoff_base * (attempt + 1)
+                    time.sleep(wait_time)
+                    continue
+            else:
+                # Critical Error
+                logger.error(f"❌ Falha crítica ao fechar posição {ticket}: {result.retcode} ({result.comment})")
+                return False
+
+        logger.error(f"❌ Falha persistente ao fechar posição {ticket} após {attempts} tentativas.")
+        return False
 
     def handle_failure(self):
         """Gerencia falhas consecutivas para ativar Circuit Breaker"""
