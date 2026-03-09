@@ -99,5 +99,61 @@ class TestAdaptiveEmaRsiStrategy(unittest.TestCase):
         self.assertFalse(result)
         self.bot.pause_trading.assert_called()
 
+    @patch("xp3_forex.strategies.adaptive_ema_rsi.symbol_manager")
+    @patch("xp3_forex.strategies.adaptive_ema_rsi.get_active_session_params")
+    def test_analyze_regression(self, mock_get_params, mock_sm):
+        """Regression test for AttributeError: 'AdaptiveEmaRsiStrategy' object has no attribute 'symbol_manager'"""
+        # 1. Setup Data
+        df = self.create_mock_df(length=200, trend="up")
+        self.strategy.regimes["EURUSD"] = self.strategy.REGIME_STRONG_UP
+        self.strategy.last_regime_update["EURUSD"] = datetime.now()
+        
+        # 2. Mock Session Params
+        mock_get_params.return_value = {
+            "ema_fast": 8,
+            "ema_slow": 21,
+            "rsi_period": 14,
+            "rsi_buy": 45,
+            "rsi_sell": 55,
+            "adx_threshold": 25,
+            "active_session": "LONDON"
+        }
+        
+        # 3. Mock symbol_manager and bot positions
+        mock_sm.check_spread.return_value = True
+        mock_sm._check_trade_mode.return_value = True
+        self.bot.positions = {}
+        self.strategy.get_account_balance = MagicMock(return_value=10000.0)
+        
+        # 4. Mock indicators to ensure we reach the symbol_manager.check_spread call
+        # We need a BUY signal
+        with patch("pandas_ta.ema") as mock_ema, \
+             patch("pandas_ta.rsi") as mock_rsi, \
+             patch("pandas_ta.adx") as mock_adx:
+            
+            # Mock EMA crossover
+            mock_ema.side_effect = [
+                pd.Series([10.0] * 199 + [12.0], index=df.index), # Fast
+                pd.Series([11.0] * 199 + [11.0], index=df.index)  # Slow (Crossover!)
+            ]
+            mock_rsi.return_value = pd.Series([50.0] * 200, index=df.index)
+            mock_adx.return_value = pd.DataFrame({
+                "ADX_14": [30.0] * 200,
+                "DMP_14": [20.0] * 200,
+                "DMN_14": [10.0] * 200
+            }, index=df.index)
+            
+            # Mock check_h1_trend to pass
+            self.strategy.check_h1_trend = MagicMock(return_value=True)
+            
+            # 5. Call analyze
+            # This should have triggered AttributeError previously at line 296
+            try:
+                signal = self.strategy.analyze("EURUSD", 15, df)
+                self.assertTrue(mock_sm.check_spread.called, "symbol_manager.check_spread should have been called")
+                print("Regression test successful: analyze() completed without AttributeError")
+            except AttributeError as e:
+                self.fail(f"analyze() raised AttributeError: {e}")
+
 if __name__ == '__main__':
     unittest.main()

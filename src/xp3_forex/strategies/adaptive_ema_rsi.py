@@ -293,7 +293,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 if h1_ok: score += 1
                 
                 # 6. Spread (Already checked in bot/feeder but good for confidence)
-                if self.symbol_manager.check_spread(symbol):
+                if symbol_manager.check_spread(symbol):
                     score += 1
                 
                 confidence = score / max_score
