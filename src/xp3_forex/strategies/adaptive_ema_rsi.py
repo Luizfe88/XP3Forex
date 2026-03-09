@@ -28,6 +28,8 @@ from ..utils.mt5_utils import get_symbol_info
 from ..utils.indicators import calculate_atr
 from ..utils.calculations import calculate_sl_tp, calculate_lot_size, get_pip_size
 from ..mt5.symbol_manager import symbol_manager
+from .session_analyzer import get_active_session_name, get_active_session_params
+
 
 # Quantitative Layers (New)
 from ..indicators.regime import calculate_hurst_rs, calculate_mmi_numba, RegimeConfig
@@ -77,6 +79,11 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         self.REGIME_STRONG_DOWN = Regime("strong_downtrend", 8, 21, 45, 55, "Strong Downtrend: Fast EMAs, RSI Pullback Sell")
         self.REGIME_HIGH_VOL = Regime("high_vol", 13, 34, 35, 65, "High Volatility: Medium EMAs, Wider RSI")
         self.REGIME_RANGING = Regime("ranging", 13, 34, 30, 70, "Ranging: Medium EMAs, Standard RSI")
+        
+        # RSI Exhaustion Limits (New)
+        # Prevents entries if trend is already over-extended
+        self.RSI_BUY_MAX = 70.0
+        self.RSI_SELL_MIN = 30.0
 
     def startup(self):
         """
@@ -266,6 +273,16 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             if adx < adx_thresh:
                 return None
                 
+            # --- RSI Exhaustion Filter (CRITICAL) ---
+            # Don't buy if RSI is already near overbought (>70)
+            # Don't sell if RSI is already near oversold (<30)
+            if rsi > self.RSI_BUY_MAX:
+                # logger.debug(f"🚫 {symbol} BUY rejected: RSI Exhaustion ({rsi:.1f} > {self.RSI_BUY_MAX})")
+                return None
+            if rsi < self.RSI_SELL_MIN:
+                # logger.debug(f"🚫 {symbol} SELL rejected: RSI Exhaustion ({rsi:.1f} < {self.RSI_SELL_MIN})")
+                return None
+                
             # Dynamic RSI Tolerance for NY Session (Strong Trend)
             active_sess = session_params.get("active_session", "UNKNOWN")
             if "NY" in active_sess.upper() and adx > 35:
@@ -314,12 +331,28 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 elif crossed_down and rsi < rsi_sell_thresh:
                     signal_type = "SELL"
 
-            # 4. Multi-Timeframe Confirmation (H1)
+            # 4. Multi-Timeframe Confirmation (H1 Trend + Hurst Confluence)
             if signal_type:
                 h1_ok = self.check_h1_trend(symbol, signal_type)
                 if not h1_ok:
                     logger.info(f"🚫 Signal {signal_type} for {symbol} rejected by H1 Trend (EMA200 Conflict)")
                     return None
+
+                # TAREFA 2: Implementação da Hierarquia de Regimes (Hurst Confluence)
+                # Objetivo: Reduzir sinais falsos em micro-tendências.
+                # Lógica: Uma entrada no M15 só deve ser permitida se o Hurst do M60 > 0.55 (Persistência).
+                try:
+                    df_h1 = self.bot.cache.get_rates(symbol, 60, 500)
+                    if df_h1 is not None and len(df_h1) >= 100:
+                        h1_hurst = calculate_hurst_rs(df_h1['close'].values)
+                        if h1_hurst <= 0.55:
+                            logger.info(f"🚫 [HURST CONFLUENCE] {symbol} rejected: H1 Hurst ({h1_hurst:.2f}) indicates noise/reversion.")
+                            return None
+                        setattr(regime, 'h1_hurst', h1_hurst)
+                except Exception as h_err:
+                    logger.warning(f"Failed Hurst Confluence check for {symbol}: {h_err}")
+            else:
+                h1_ok = True # No signal, no validation needed, but define for safety
 
             # 5. Calculate Confidence (Detailed)
             confidence = 0.5 # Base
@@ -337,7 +370,22 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 elif (signal_type == "BUY" and current_price > ema_fast) or (signal_type == "SELL" and current_price < ema_fast):
                     score += 0.5 # Weak trigger
                 
-                # 3. RSI Position
+                # B. RSI Filter
+                is_buy = (signal_type == "BUY")
+                rsi_ok = False
+                rsi_missing = ""
+                if is_buy:
+                    rsi_ok = rsi <= self.RSI_BUY_MAX
+                    rsi_missing = f"RSI > {self.RSI_BUY_MAX} (Exhausted)"
+                else:
+                    rsi_ok = rsi >= self.RSI_SELL_MIN
+                    rsi_missing = f"RSI < {self.RSI_SELL_MIN} (Exhausted)"
+                
+                # This part is for get_why_report, not directly for confidence score
+                # add_cond("RSI Exhaustion", f"{rsi:.1f}", f"<= {self.RSI_BUY_MAX}" if is_buy else f">= {self.RSI_SELL_MIN}", 
+                #          rsi_ok, "RSI not exhausted", rsi_missing)
+
+                # 3. RSI Position (Strategy)
                 if signal_type == "BUY":
                     if rsi > rsi_buy_thresh + 10: score += 1
                     elif rsi > rsi_buy_thresh: score += 0.5
@@ -386,8 +434,8 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 # --- QUANT LAYER 3: Institutional Risk Scaling ---
                 try:
                     # CVaR Risk Check
-                    returns = df['close'].pct_change().dropna().tail(500)
-                    cvar_95 = calculate_cf_cvar(returns.values, alpha=0.05)
+                    returns_series = df['close'].pct_change().dropna().tail(500)
+                    cvar_99 = calculate_cf_cvar(returns_series.values, alpha=0.99)
                     
                     # Fractional Kelly Sizing
                     # Win rate and R/R from session or historical
@@ -395,15 +443,27 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                     risk_reward = (tp - current_price) / abs(current_price - sl)
                     
                     hurst_val = getattr(regime, 'hurst', 0.5)
-                    kelly_fraction = calculate_fractional_kelly(win_rate, risk_reward, hurst_val)
                     
-                    # Apply Kelly scaling to volume
-                    scaled_volume = volume * (kelly_fraction / 0.02) # Normalize to base risk
-                    volume = max(0.01, min(scaled_volume, settings.MAX_LOTS_PER_TRADE))
+                    # Get Correlation Adjustment (Portfolio Level)
+                    risk_config = RiskConfig() 
+                    kelly_fraction = calculate_fractional_kelly(
+                        win_rate, 
+                        risk_reward, 
+                        hurst_val, 
+                        risk_config,
+                        symbol=symbol,
+                        portfolio_returns=self.get_portfolio_returns_data()
+                    )
                     
-                    logger.info(f"📊 [QUANT RISK] {symbol}: CVaR(95)={cvar_95:.4f}, Kelly Fraction={kelly_fraction:.4f}, Volume Adjusted: {volume:.2f}")
+                    # Calculate Final Equity Risk and Volume
+                    risk_amount = self.get_account_equity() * kelly_fraction
+                    volume = self.calculate_position_size(symbol, current_price, sl, risk_amount)
+                    volume = max(0.01, min(volume, settings.MAX_LOTS_PER_TRADE))
+                    
+                    logger.info(f"📊 [QUANT RISK] {symbol}: CVaR(99)={cvar_99:.4f}, Kelly Fraction={kelly_fraction:.4f}, Final Volume: {volume:.2f}")
                 except Exception as risk_err:
-                    logger.warning(f"Risk scaling failed: {risk_err}")
+                    logger.warning(f"Risk scaling failed for {symbol}: {risk_err}")
+                    volume = 0.01
                 
                 if volume <= 0:
                     return None
@@ -466,6 +526,15 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         if self.is_high_impact_news_soon(symbol):
             logger.info(f"🚫 Trade rejected for {symbol} due to High Impact News soon")
             return False
+
+        # TAREFA 4: Forex Weekend Gap Protection
+        # Objetivo: Evitar volatilidade extrema e gaps de domingo (Sunday Open).
+        # Regra: Warm-up de 30 minutos na abertura do mercado (Domingo 17:00 NY / 22:00 UTC).
+        now_utc = datetime.utcnow()
+        if now_utc.weekday() == 6: # Sunday
+            if now_utc.hour == 22 and now_utc.minute < 30:
+                logger.info(f"⏳ [FOREX WARM-UP] {symbol}: Sunday Open gap observation (22:00-22:30 UTC). Kalman stabilized.")
+                return False
             
         return True
 
@@ -517,9 +586,23 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 
         return False
 
+    def get_portfolio_returns_data(self) -> pd.DataFrame:
+        """
+        Coleta retornos históricos dos ativos com posições abertas para cálculo de covariância.
+        """
+        returns_dict = {}
+        for pos_symbol in self.bot.positions:
+            df = self.bot.cache.get_rates(pos_symbol, 60, 200) # H1 returns
+            if df is not None:
+                returns_dict[pos_symbol] = df['close'].pct_change()
+        
+        if not returns_dict:
+            return pd.DataFrame()
+            
+        return pd.DataFrame(returns_dict).dropna()
+
     def is_trading_session_active(self) -> bool:
         """Verifica se alguma sessão principal está ativa via SessionAnalyzer"""
-        from .session_analyzer import get_active_session_name
         return get_active_session_name(datetime.utcnow()) != "UNKNOWN"
 
     @staticmethod
@@ -880,8 +963,28 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                  "Trend" if hurst_val > 0.65 else ("MeanRev" if hurst_val < 0.45 else "Noise"),
                  "")
         
-        # Load params just to show 'Optimized' status
-        q_params = settings.get_quant_params(symbol)
+        # TAREFA 3: Cornish-Fisher CVaR in "Why Report"
+        try:
+            returns = df['close'].pct_change().dropna().tail(500).values
+            mu = np.mean(returns)
+            sigma = np.std(returns)
+            skew = (np.sum((returns - mu)**3) / (len(returns) * sigma**3)) if sigma > 0 else 0
+            kurt = (np.sum((returns - mu)**4) / (len(returns) * sigma**4)) if sigma > 0 else 3
+            cvar_val = calculate_cf_cvar(returns, alpha=0.99)
+            
+            cvar_limit = settings.get_quant_params(symbol).get("max_portfolio_cvar_pct", 0.015)
+            cvar_ok = cvar_val < cvar_limit
+            
+            add_cond("Cornish-Fisher CVaR (99%)",
+                     f"{cvar_val*100:.2f}%",
+                     f"< {cvar_limit*100:.2f}%",
+                     cvar_ok,
+                     f"Skew: {skew:.2f}, Kurt: {kurt:.2f}",
+                     f"Excesso Risco de Cauda! CVaR > {cvar_limit*100:.2f}%" if not cvar_ok else "")
+        except Exception as cvar_err:
+            logger.warning(f"CVaR calculation failed for Why Report: {cvar_err}")
+
+        # Optuna Calibration
         is_optimized = "hurst_lookback" in q_params and q_params.get("hurst_lookback") != 1000
         add_cond("Optuna Calibration",
                  "OTIMIZADO" if is_optimized else "PADRÃO",

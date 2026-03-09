@@ -34,7 +34,7 @@ def calculate_cornish_fisher_z(alpha: float, skewness: float, kurtosis: float) -
     
     return z_adj
 
-def calculate_cvar_cornish_fisher(returns: np.ndarray, alpha: float = 0.99) -> float:
+def calculate_cf_cvar(returns: np.ndarray, alpha: float = 0.99) -> float:
     """
     Calculates Conditional Value at Risk (CVaR) using Cornish-Fisher expansion.
     """
@@ -70,9 +70,16 @@ def calculate_cvar_cornish_fisher(returns: np.ndarray, alpha: float = 0.99) -> f
         
     return cvar
 
-def calculate_fractional_kelly(win_rate: float, win_loss_ratio: float, hurst: float, config: RiskConfig) -> float:
+def calculate_fractional_kelly(
+    win_rate: float, 
+    win_loss_ratio: float, 
+    hurst: float, 
+    config: RiskConfig,
+    symbol: Optional[str] = None,
+    portfolio_returns: Optional[pd.DataFrame] = None
+) -> float:
     """
-    Calculates Fractional Kelly sizing with a noise penalty.
+    Calculates Fractional Kelly sizing with a noise penalty and Covariance adjustment.
     """
     if win_loss_ratio <= 0:
         return 0.0
@@ -88,15 +95,31 @@ def calculate_fractional_kelly(win_rate: float, win_loss_ratio: float, hurst: fl
     # Apply primary fraction (Half, Quarter, etc.)
     base_f = kelly_f * config.kelly_fraction
     
-    # Noise Penalty: if 0.45 < H < 0.55, reduce size significantly
+    # 1. Noise Penalty: if 0.45 < H < 0.55, reduce size significantly
     h_min, h_max = config.hurst_noise_range
     if h_min < hurst < h_max:
         # Linear penalty: deepest at H=0.5
         dist = abs(hurst - 0.5) / 0.05 # 0 to 1
         penalty = 0.2 + 0.8 * dist # Max 80% reduction at H=0.5
         base_f *= penalty
+
+    # 2. TAREFA 5: Covariance/Correlation Adjustment
+    # Se o bot tentar abrir posições em ativos altamente correlacionados, 
+    # o tamanho da posição deve ser reduzido proporcionalmente.
+    if symbol and portfolio_returns is not None and not portfolio_returns.empty:
+        if symbol in portfolio_returns.columns:
+            # Calculate correlation of 'symbol' with other active columns
+            correlations = portfolio_returns.corr()[symbol]
+            # Average correlation with other existing positions (excluding itself)
+            other_cols = [c for c in portfolio_returns.columns if c != symbol]
+            if other_cols:
+                avg_corr = correlations[other_cols].abs().mean()
+                if avg_corr > 0.7:
+                    # Moderate reduction: if avg correlation is 0.9, reduce by ~30%
+                    reduction = 1.0 - (avg_corr - 0.7) / 0.3 * 0.5 
+                    base_f *= max(0.5, reduction)
         
-    return max(0.0, base_f)
+    return max(0.001, base_f) # Min 0.1% to allow small trades
 
 class InstitutionalRiskManager:
     def __init__(self, config: RiskConfig = RiskConfig()):
@@ -123,7 +146,7 @@ class InstitutionalRiskManager:
         for r in all_rets:
             combined_returns += r[:min_len] / len(all_rets)
             
-        p_cvar = calculate_cvar_cornish_fisher(combined_returns, self.config.confidence_level)
+        p_cvar = calculate_cf_cvar(combined_returns, self.config.confidence_level)
         
         # MPE Kill Switch check
         limit = self.config.max_portfolio_cvar_pct

@@ -277,11 +277,16 @@ class TradeExecutor:
             logger.warning(f"🧪 FORCE_EXECUTION: Ignorando filtros para {resolved_symbol}")
 
         # 2. Recalcular Lote (Position Sizing)
-        # Ignora volume do sinal original se for absurdo
-        calculated_volume = self.calculate_lot_size(
-            resolved_symbol, signal.stop_loss, signal.entry_price, risk_percent=0.3
-        )
-        signal.volume = calculated_volume  # Atualiza sinal
+        # PRIORIDADE: Usar volume já calculado pela camada quantitativa (final_volume/Kelly)
+        if signal.volume and signal.volume > 0:
+            calculated_volume = signal.volume
+            logger.info(f"⚖️ Usando VOLUME QUANTITATIVO: {calculated_volume:.2f}")
+        else:
+            # Fallback se o sinal não vier com volume (estratégias legadas)
+            calculated_volume = self.calculate_lot_size(
+                resolved_symbol, signal.stop_loss, signal.entry_price, risk_percent=0.3
+            )
+            signal.volume = calculated_volume  # Atualiza sinal
 
         order_type = signal.order_type
         price = signal.entry_price
