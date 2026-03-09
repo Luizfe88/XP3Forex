@@ -4,28 +4,53 @@ Discovers all symbols and runs quantitative optimization in batch.
 """
 
 import logging
-from typing import List
+from typing import List, Optional
 from xp3_forex.core.settings import settings
 from xp3_forex.utils.mt5_utils import get_rates, initialize_mt5, initialize_market_data
 from xp3_forex.optimization.quant_optimizer import QuantOptimizer, save_optimized_quant_params
+
+import argparse
+import MetaTrader5 as mt5
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("XP3.AutoCalibrator")
 
-def run_total_automation(n_trials: int = 30):
+def run_total_automation(target_symbols: Optional[List[str]] = None, n_trials: int = 30):
     """
     Runs the calibration process for all active symbols in the configuration.
     """
     logger.info("🚀 Iniciando automação total de calibração quantitativa...")
     
-    if not initialize_mt5():
+    if not initialize_mt5(
+        login=settings.MT5_LOGIN,
+        password=settings.MT5_PASSWORD,
+        server=settings.MT5_SERVER,
+        path=settings.MT5_PATH
+    ):
         logger.error("❌ Falha ao inicializar MT5. Abortando.")
         return
 
     # 1. Discover Symbols
-    symbols = settings.symbols_list
-    logger.info(f"🔍 Símbolos detectados: {symbols}")
+    if target_symbols:
+        symbols = target_symbols
+    else:
+        symbols = settings.symbols_list
+        
+    if "ALL" in [s.upper() for s in symbols]:
+        logger.info("🌍 'ALL' detectado. Buscando todos os símbolos do Market Watch...")
+        all_mt5_symbols = mt5.symbols_get()
+        if all_mt5_symbols:
+            # Filtra apenas o que está no Market Watch (visible=True)
+            symbols = [s.name for s in all_mt5_symbols if s.visible]
+            if not symbols:
+                 # Fallback: Se o Market Watch estiver vazio, pega os principais
+                 logger.warning("⚠️ Market Watch vazio. Buscando primeiros 20 ativos do terminal...")
+                 symbols = [s.name for s in all_mt5_symbols][:20]
+        else:
+            logger.warning("⚠️ Nenhum símbolo encontrado no terminal.")
+            
+    logger.info(f"🔍 Símbolos para calibração: {symbols}")
     
     # 2. Ensure data availability
     validated_symbols = initialize_market_data(symbols)
@@ -56,5 +81,14 @@ def run_total_automation(n_trials: int = 30):
     logger.info(f"🏁 Automação concluída. {results_count}/{len(symbols)} ativos calibrados.")
 
 if __name__ == "__main__":
-    # We can pass an argument to control the depth of optimization
-    run_total_automation(n_trials=20) # Conservative trials for batch processing
+    parser = argparse.ArgumentParser(description="XP3 Quantitative Auto-Calibrator")
+    parser.add_argument("--symbols", type=str, help="Lista de símbolos separados por vírgula ou 'ALL'")
+    parser.add_argument("--trials", type=int, default=20, help="Número de tentativas Optuna por ativo")
+    
+    args = parser.parse_args()
+    
+    target_list = None
+    if args.symbols:
+        target_list = [s.strip().upper() for s in args.symbols.split(",")]
+        
+    run_total_automation(target_symbols=target_list, n_trials=args.trials)

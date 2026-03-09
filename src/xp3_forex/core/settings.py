@@ -72,10 +72,10 @@ class Settings(BaseSettings):
     Carrega variáveis de ambiente do arquivo .env
     """
     model_config = SettingsConfigDict(
-        env_file=".env", 
+        env_file=str(Path(__file__).parent.parent.parent.parent / ".env"), 
         env_file_encoding="utf-8",
         extra="ignore",
-        case_sensitive=True
+        case_sensitive=False
     )
 
     # ===========================
@@ -231,6 +231,33 @@ class Settings(BaseSettings):
         self.LOGS_DIR.mkdir(parents=True, exist_ok=True)
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
         self.OPTIMIZER_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    def get_quant_params(self, symbol: str) -> Dict[str, Any]:
+        """
+        Loads optimized quantitative parameters for a specific symbol.
+        Returns default values if not found.
+        """
+        import json
+        path = self.DATA_DIR / "quant_optimized_params.json"
+        
+        # Default fallback values
+        defaults = {
+            "hurst_lookback": 1000,
+            "mmi_lookback": 300,
+            "initial_r": 500.0,
+            "min_q": 0.01,
+            "max_q": 0.1
+        }
+        
+        if not path.exists():
+            return defaults
+            
+        try:
+            with open(path, "r") as f:
+                data = json.load(f)
+                return data.get(symbol, defaults)
+        except Exception:
+            return defaults
 
 # Instância Global
 settings = Settings()

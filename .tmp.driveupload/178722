@@ -1,0 +1,344 @@
+{
+    "XAGEUR": {
+        "hurst_lookback": 1141,
+        "mmi_lookback": 387,
+        "initial_r": 922.0930368659758,
+        "min_q": 0.03441878306609031,
+        "max_q": 0.06823645703387196
+    },
+    "XAGUSD": {
+        "hurst_lookback": 740,
+        "mmi_lookback": 495,
+        "initial_r": 999.1719432654228,
+        "min_q": 0.01643818537940042,
+        "max_q": 0.06446588558488664
+    },
+    "XAUEUR": {
+        "hurst_lookback": 1298,
+        "mmi_lookback": 159,
+        "initial_r": 819.0884860272096,
+        "min_q": 0.023207667525713033,
+        "max_q": 0.1258345583439801
+    },
+    "XAUUSD": {
+        "hurst_lookback": 784,
+        "mmi_lookback": 236,
+        "initial_r": 840.362951204623,
+        "min_q": 0.009956204632364516,
+        "max_q": 0.0619408993841809
+    },
+    "XAUAUD": {
+        "hurst_lookback": 876,
+        "mmi_lookback": 380,
+        "initial_r": 572.6621111810447,
+        "min_q": 0.041202705864685676,
+        "max_q": 0.060608213084519635
+    },
+    "XAUJPY": {
+        "hurst_lookback": 1016,
+        "mmi_lookback": 291,
+        "initial_r": 987.1268153934831,
+        "min_q": 0.010088662553573581,
+        "max_q": 0.06613798718644899
+    },
+    "XAUCHF": {
+        "hurst_lookback": 865,
+        "mmi_lookback": 331,
+        "initial_r": 905.7194500893653,
+        "min_q": 0.009439782465005049,
+        "max_q": 0.11562257541150181
+    },
+    "XAUGBP": {
+        "hurst_lookback": 1459,
+        "mmi_lookback": 201,
+        "initial_r": 989.9374453829746,
+        "min_q": 0.003979190970601065,
+        "max_q": 0.45675774008377895
+    },
+    "XAGAUD": {
+        "hurst_lookback": 1118,
+        "mmi_lookback": 249,
+        "initial_r": 909.0975190567518,
+        "min_q": 0.020752750442422804,
+        "max_q": 0.20309727559196067
+    },
+    "UK100": {
+        "hurst_lookback": 1327,
+        "mmi_lookback": 298,
+        "initial_r": 652.0093781352648,
+        "min_q": 0.02521034867587391,
+        "max_q": 0.37942110081826275
+    },
+    "US30": {
+        "hurst_lookback": 1140,
+        "mmi_lookback": 286,
+        "initial_r": 722.7646124095364,
+        "min_q": 0.03856180947902709,
+        "max_q": 0.4833596878633196
+    },
+    "NETH25": {
+        "hurst_lookback": 1431,
+        "mmi_lookback": 249,
+        "initial_r": 108.69071851115206,
+        "min_q": 0.047631158356228206,
+        "max_q": 0.4113979714663827
+    },
+    "BTCUSD": {
+        "hurst_lookback": 1083,
+        "mmi_lookback": 288,
+        "initial_r": 432.96120430408564,
+        "min_q": 0.03999137978303838,
+        "max_q": 0.4365180091404341
+    },
+    "ETHUSD": {
+        "hurst_lookback": 799,
+        "mmi_lookback": 492,
+        "initial_r": 277.95679575111893,
+        "min_q": 0.03916819374014487,
+        "max_q": 0.43897965931420546
+    },
+    "ADAUSD": {
+        "hurst_lookback": 643,
+        "mmi_lookback": 454,
+        "initial_r": 585.9260966108948,
+        "min_q": 0.04686329055522424,
+        "max_q": 0.2987283072579042
+    },
+    "BNBUSD": {
+        "hurst_lookback": 1489,
+        "mmi_lookback": 500,
+        "initial_r": 108.62476569843874,
+        "min_q": 0.03626848130354515,
+        "max_q": 0.4803972440839388
+    },
+    "SOLUSD": {
+        "hurst_lookback": 781,
+        "mmi_lookback": 408,
+        "initial_r": 119.94837070320612,
+        "min_q": 0.010406473723226214,
+        "max_q": 0.3190816255280411
+    },
+    "ABNB.NAS": {
+        "hurst_lookback": 1498,
+        "mmi_lookback": 101,
+        "initial_r": 748.8465347248623,
+        "min_q": 0.02868951056274883,
+        "max_q": 0.06039696889920265
+    },
+    "GERN.NAS": {
+        "hurst_lookback": 1367,
+        "mmi_lookback": 290,
+        "initial_r": 437.8090493227538,
+        "min_q": 0.028877404820379492,
+        "max_q": 0.11091743271401318
+    },
+    "SBGI.NAS": {
+        "hurst_lookback": 866,
+        "mmi_lookback": 278,
+        "initial_r": 107.34561498690728,
+        "min_q": 0.04716457544120735,
+        "max_q": 0.22662199329262503
+    },
+    "CBRL.NAS": {
+        "hurst_lookback": 1111,
+        "mmi_lookback": 275,
+        "initial_r": 991.4341893446689,
+        "min_q": 0.04102361232132539,
+        "max_q": 0.060850188655222834
+    },
+    "ADAG.NAS": {
+        "hurst_lookback": 759,
+        "mmi_lookback": 108,
+        "initial_r": 156.5854320459548,
+        "min_q": 0.00188774611974708,
+        "max_q": 0.4133976160730384
+    },
+    "ICFI.NAS": {
+        "hurst_lookback": 833,
+        "mmi_lookback": 400,
+        "initial_r": 725.7638463128902,
+        "min_q": 0.035588575537080364,
+        "max_q": 0.07807938875509765
+    },
+    "INDY.NAS": {
+        "hurst_lookback": 707,
+        "mmi_lookback": 402,
+        "initial_r": 970.7047319372912,
+        "min_q": 0.036084962757969005,
+        "max_q": 0.062034485704890896
+    },
+    "AUDJPY": {
+        "hurst_lookback": 1491,
+        "mmi_lookback": 212,
+        "initial_r": 348.71418396829864,
+        "min_q": 0.039002982421610224,
+        "max_q": 0.1388558918805583
+    },
+    "EURGBP": {
+        "hurst_lookback": 691,
+        "mmi_lookback": 172,
+        "initial_r": 458.25268463234255,
+        "min_q": 0.019226792262029096,
+        "max_q": 0.27395151527465056
+    },
+    "EURAUD": {
+        "hurst_lookback": 1310,
+        "mmi_lookback": 341,
+        "initial_r": 572.4901987303035,
+        "min_q": 0.040149199479996116,
+        "max_q": 0.06557920586694546
+    },
+    "EURJPY": {
+        "hurst_lookback": 1251,
+        "mmi_lookback": 108,
+        "initial_r": 912.2458210366236,
+        "min_q": 0.04929820444897815,
+        "max_q": 0.07042128005540989
+    },
+    "GBPJPY": {
+        "hurst_lookback": 1340,
+        "mmi_lookback": 240,
+        "initial_r": 920.2369929759234,
+        "min_q": 0.04111438163870969,
+        "max_q": 0.06124667017186203
+    },
+    "CADJPY": {
+        "hurst_lookback": 524,
+        "mmi_lookback": 437,
+        "initial_r": 972.1198505683203,
+        "min_q": 0.022459749555974448,
+        "max_q": 0.13157061572234052
+    },
+    "GBPAUD": {
+        "hurst_lookback": 743,
+        "mmi_lookback": 167,
+        "initial_r": 839.3381853709132,
+        "min_q": 0.02134651970199335,
+        "max_q": 0.40190440798480054
+    },
+    "NZDUSD": {
+        "hurst_lookback": 653,
+        "mmi_lookback": 362,
+        "initial_r": 272.9382527110489,
+        "min_q": 0.019161032291664062,
+        "max_q": 0.43215637171504423
+    },
+    "USDSGD": {
+        "hurst_lookback": 521,
+        "mmi_lookback": 377,
+        "initial_r": 747.1534585719891,
+        "min_q": 0.028874165532487596,
+        "max_q": 0.4857244906728503
+    },
+    "EURTRY": {
+        "hurst_lookback": 1233,
+        "mmi_lookback": 413,
+        "initial_r": 119.31750609197498,
+        "min_q": 0.022777179276387338,
+        "max_q": 0.47915078033224
+    },
+    "EURZAR": {
+        "hurst_lookback": 1312,
+        "mmi_lookback": 393,
+        "initial_r": 996.5348885557968,
+        "min_q": 0.004524975341954687,
+        "max_q": 0.2267877454602985
+    },
+    "GBPTRY": {
+        "hurst_lookback": 958,
+        "mmi_lookback": 469,
+        "initial_r": 262.36202345949846,
+        "min_q": 0.0029389030315381533,
+        "max_q": 0.2593592491734521
+    },
+    "USDCNH": {
+        "hurst_lookback": 928,
+        "mmi_lookback": 451,
+        "initial_r": 295.6411077537248,
+        "min_q": 0.011134500976523638,
+        "max_q": 0.23903429331821946
+    },
+    "USDCZK": {
+        "hurst_lookback": 1129,
+        "mmi_lookback": 231,
+        "initial_r": 109.01586906994702,
+        "min_q": 0.04781024028934501,
+        "max_q": 0.33977830334880954
+    },
+    "USDDKK": {
+        "hurst_lookback": 1495,
+        "mmi_lookback": 355,
+        "initial_r": 119.73236580013928,
+        "min_q": 0.0061461392041453665,
+        "max_q": 0.49991295752381165
+    },
+    "USDHKD": {
+        "hurst_lookback": 1024,
+        "mmi_lookback": 227,
+        "initial_r": 105.06169508105053,
+        "min_q": 0.019745554908620323,
+        "max_q": 0.2697782873966704
+    },
+    "USDHUF": {
+        "hurst_lookback": 509,
+        "mmi_lookback": 366,
+        "initial_r": 994.770738641784,
+        "min_q": 0.001223158691356507,
+        "max_q": 0.16399248499428856
+    },
+    "USDMXN": {
+        "hurst_lookback": 1471,
+        "mmi_lookback": 109,
+        "initial_r": 994.0636638193862,
+        "min_q": 0.0014498087791352185,
+        "max_q": 0.21240094347238572
+    },
+    "USDNOK": {
+        "hurst_lookback": 935,
+        "mmi_lookback": 381,
+        "initial_r": 835.2177372398667,
+        "min_q": 0.03349582428584391,
+        "max_q": 0.18485291139797233
+    },
+    "USDPLN": {
+        "hurst_lookback": 658,
+        "mmi_lookback": 481,
+        "initial_r": 718.5062360412766,
+        "min_q": 0.020718601711936513,
+        "max_q": 0.20205915543665048
+    },
+    "USDSEK": {
+        "hurst_lookback": 1383,
+        "mmi_lookback": 468,
+        "initial_r": 958.8029671680812,
+        "min_q": 0.0452715469324154,
+        "max_q": 0.4226048650900208
+    },
+    "USDTHB": {
+        "hurst_lookback": 633,
+        "mmi_lookback": 175,
+        "initial_r": 590.8003826522778,
+        "min_q": 0.008899506350160857,
+        "max_q": 0.23787676765723012
+    },
+    "USDTRY": {
+        "hurst_lookback": 1070,
+        "mmi_lookback": 102,
+        "initial_r": 108.15555478569856,
+        "min_q": 0.048951305740513804,
+        "max_q": 0.23028135250304768
+    },
+    "USDZAR": {
+        "hurst_lookback": 721,
+        "mmi_lookback": 110,
+        "initial_r": 717.3459262287834,
+        "min_q": 0.02740840976389252,
+        "max_q": 0.0880818367360138
+    },
+    "EURUSD": {
+        "hurst_lookback": 860,
+        "mmi_lookback": 153,
+        "initial_r": 437.11289660757143,
+        "min_q": 0.03164676030130286,
+        "max_q": 0.1602622944710555
+    },

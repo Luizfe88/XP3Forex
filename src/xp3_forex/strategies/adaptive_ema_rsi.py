@@ -27,8 +27,12 @@ from ..core.models import TradeSignal, Position
 from ..utils.mt5_utils import get_symbol_info
 from ..utils.indicators import calculate_atr
 from ..utils.calculations import calculate_sl_tp, calculate_lot_size, get_pip_size
-from .session_analyzer import get_active_session_params, get_active_session_name
 from ..mt5.symbol_manager import symbol_manager
+
+# Quantitative Layers (New)
+from ..indicators.regime import calculate_hurst_rs, calculate_mmi_numba, RegimeConfig
+from ..indicators.filters import KalmanFilter, KalmanConfig
+from ..risk.institutional import calculate_fractional_kelly, calculate_cf_cvar, RiskConfig
 
 logger = logging.getLogger("XP3.Strategy.AR-EMA-RSI")
 
@@ -91,6 +95,15 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             except: pass
         else:
             logger.info("🆕 Memória Vazia: Iniciando com pesos originais (Padrão Institucional).")
+            
+        # Quantitative Params Check
+        quant_json = settings.DATA_DIR / "quant_optimized_params.json"
+        if quant_json.exists():
+            try:
+                with open(quant_json, 'r') as f:
+                    q_data = json.load(f)
+                logger.info(f"🧬 QUANT CORE: {len(q_data)} ativos com calibração Optuna ativa.")
+            except: pass
         
         # Only iterate over bot symbols (which are already filtered)
         for symbol in self.bot.symbols:
@@ -150,6 +163,34 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             self.regimes[symbol] = regime
             self.last_regime_update[symbol] = datetime.now()
             
+            # --- QUANT LAYER: Hurst & MMI Enhancement ---
+            try:
+                # Load optimized parameters
+                q_params = settings.get_quant_params(symbol)
+                h_lookback = q_params.get("hurst_lookback", 1000)
+                m_lookback = q_params.get("mmi_lookback", 300)
+                
+                # Calculate Hurst recursively
+                hurst_prices = df['close'].tail(h_lookback).values
+                hurst_val = calculate_hurst_rs(hurst_prices)
+                
+                # Calculate MMI
+                mmi_prices = df['close'].tail(m_lookback).values
+                mmi_val = calculate_mmi_numba(mmi_prices)
+                
+                # Update regime based on Hurst (Quantitative Core)
+                if hurst_val > 0.65:
+                    regime.description += " | QUANT: Strong Trending (Hurst > 0.65)"
+                elif hurst_val < 0.45:
+                    regime.description += " | QUANT: Mean Reverting (Hurst < 0.45)"
+                
+                # Store quant values in regime or metadata
+                setattr(regime, 'hurst', hurst_val)
+                setattr(regime, 'mmi', mmi_val)
+                
+            except Exception as q_err:
+                logger.warning(f"Failed to calculate quant metrics for {symbol}: {q_err}")
+            
             # logger.debug(f"Regime for {symbol}: {regime.name} (ADX={adx:.1f}, ATR/Avg={atr/atr_mean_50:.1f})")
             
         except Exception as e:
@@ -196,6 +237,21 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             df['rsi'] = ta.rsi(df['close'], length=rsi_period)
             df.ta.adx(length=14, append=True)
             
+            # --- QUANT LAYER 2: Adaptive Kalman Filter Signal ---
+            q_params = settings.get_quant_params(symbol)
+            hurst_val = getattr(regime, 'hurst', 0.5)
+            
+            kf_config = KalmanConfig(
+                initial_r=q_params.get("initial_r", 500.0),
+                min_q=q_params.get("min_q", 0.01),
+                max_q=q_params.get("max_q", 0.1)
+            )
+            kf = KalmanFilter(kf_config)
+            # Apply KF to close prices
+            hurst_series = pd.Series([hurst_val] * len(df), index=df.index)
+            filtered_price = kf.apply(df['close'], hurst_series)
+            df['kf_signal'] = filtered_price
+            
             # Check if indicators are valid
             if df[f'ema_fast'].iloc[-1] is None or df['rsi'].iloc[-1] is None:
                 return None
@@ -226,20 +282,24 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             # Prompt says: "EMA/RSI adaptativos por regime"
             # I'll stick to crossover + RSI confirmation for simplicity/robustness v1.0
             
-            crossed_up = (df[f'ema_fast'].iloc[-2] <= df[f'ema_slow'].iloc[-2]) and \
-                         (ema_fast > ema_slow)
+            # USE KALMAN SIGNAL INSTEAD OF EMA FAST (Layer 2 requirement)
+            kf_signal = df['kf_signal'].iloc[-1]
+            kf_signal_prev = df['kf_signal'].iloc[-2]
             
-            crossed_down = (df[f'ema_fast'].iloc[-2] >= df[f'ema_slow'].iloc[-2]) and \
-                           (ema_fast < ema_slow)
+            crossed_up = (kf_signal_prev <= df[f'ema_slow'].iloc[-2]) and \
+                         (kf_signal > ema_slow)
+            
+            crossed_down = (kf_signal_prev >= df[f'ema_slow'].iloc[-2]) and \
+                           (kf_signal < ema_slow)
             
             # Conditions based on Regime
             if regime == self.REGIME_STRONG_UP:
-                # In strong uptrend, buy on dips or crossovers
-                if (crossed_up or (current_price > ema_fast and rsi < 60)) and rsi > rsi_buy_thresh:
+                # In strong uptrend, buy on dips or crossovers using Kalman
+                if (crossed_up or (current_price > kf_signal and rsi < 60)) and rsi > rsi_buy_thresh:
                     signal_type = "BUY"
                     
             elif regime == self.REGIME_STRONG_DOWN:
-                 if (crossed_down or (current_price < ema_fast and rsi > 40)) and rsi < rsi_sell_thresh:
+                 if (crossed_down or (current_price < kf_signal and rsi > 40)) and rsi < rsi_sell_thresh:
                     signal_type = "SELL"
                     
             elif regime == self.REGIME_HIGH_VOL:
@@ -323,11 +383,27 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                     sl = current_price + sl_dist
                     tp = current_price - (atr_mult_tp * atr)
                 
-                # Position Sizing (Risk %)
-                risk_amount = self.get_account_balance() * settings.RISK_PER_TRADE / 100.0
-                
-                # Calculate Volume
-                volume = self.calculate_position_size(symbol, current_price, sl, risk_amount)
+                # --- QUANT LAYER 3: Institutional Risk Scaling ---
+                try:
+                    # CVaR Risk Check
+                    returns = df['close'].pct_change().dropna().tail(500)
+                    cvar_95 = calculate_cf_cvar(returns.values, alpha=0.05)
+                    
+                    # Fractional Kelly Sizing
+                    # Win rate and R/R from session or historical
+                    win_rate = session_params.get("win_rate", 0.55)
+                    risk_reward = (tp - current_price) / abs(current_price - sl)
+                    
+                    hurst_val = getattr(regime, 'hurst', 0.5)
+                    kelly_fraction = calculate_fractional_kelly(win_rate, risk_reward, hurst_val)
+                    
+                    # Apply Kelly scaling to volume
+                    scaled_volume = volume * (kelly_fraction / 0.02) # Normalize to base risk
+                    volume = max(0.01, min(scaled_volume, settings.MAX_LOTS_PER_TRADE))
+                    
+                    logger.info(f"📊 [QUANT RISK] {symbol}: CVaR(95)={cvar_95:.4f}, Kelly Fraction={kelly_fraction:.4f}, Volume Adjusted: {volume:.2f}")
+                except Exception as risk_err:
+                    logger.warning(f"Risk scaling failed: {risk_err}")
                 
                 if volume <= 0:
                     return None
@@ -793,6 +869,26 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                  pos_ok,
                  "Espaço para novas ordens",
                  "Limite de posições atingido" if not pos_ok else "")
+
+        # G. Quantitative Verification (NEW)
+        hurst_val = getattr(regime, 'hurst', 0.5)
+        # We consider "Active" if it's not the default 0.5 or simply showing the value
+        add_cond("Hurst Exponent (Regime)",
+                 f"{hurst_val:.3f}",
+                 "0.45 < H < 0.65",
+                 True, 
+                 "Trend" if hurst_val > 0.65 else ("MeanRev" if hurst_val < 0.45 else "Noise"),
+                 "")
+        
+        # Load params just to show 'Optimized' status
+        q_params = settings.get_quant_params(symbol)
+        is_optimized = "hurst_lookback" in q_params and q_params.get("hurst_lookback") != 1000
+        add_cond("Optuna Calibration",
+                 "OTIMIZADO" if is_optimized else "PADRÃO",
+                 "OTIMIZADO",
+                 is_optimized,
+                 "Usando parâmetros Optuna mais recentes",
+                 "Usando valores padrão do sistema" if not is_optimized else "")
 
         # 3. Construção do Painel
         confidence = (score / max_score) * 100 if max_score > 0 else 0

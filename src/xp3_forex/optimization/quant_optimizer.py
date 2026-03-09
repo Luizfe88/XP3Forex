@@ -113,7 +113,12 @@ if __name__ == "__main__":
     # Diagnostic / Local execution example
     from xp3_forex.utils.mt5_utils import get_rates, initialize_mt5
     
-    if initialize_mt5():
+    if initialize_mt5(
+        login=settings.MT5_LOGIN,
+        password=settings.MT5_PASSWORD,
+        server=settings.MT5_SERVER,
+        path=settings.MT5_PATH
+    ):
         for sym in ["EURUSD", "XAUUSD"]:
             logger.info(f"Processing {sym}...")
             # Fetch H1 data for calibration
