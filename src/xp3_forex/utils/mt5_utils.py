@@ -12,6 +12,8 @@ import logging
 import time
 import math
 
+from xp3_forex.core.settings import settings
+
 logger = logging.getLogger(__name__)
 
 # Lock para operações MT5 (evita race conditions)
@@ -76,10 +78,24 @@ def _mt5_worker():
             # 1. Garante inicialização no thread do worker
             if not is_init:
                 path = _mt5_init_params.get('path')
-                if path:
-                    is_init = mt5.initialize(path=path)
-                else:
-                    is_init = mt5.initialize()
+                login = _mt5_init_params.get('login')
+                password = _mt5_init_params.get('password')
+                server = _mt5_init_params.get('server')
+                
+                # Prepara argumentos para initialize
+                init_args = {}
+                if path: init_args['path'] = str(path)
+                
+                # Só passa login/password/server se o login for fornecido
+                if login and int(login) != 0:
+                    init_args['login'] = int(login)
+                    if password: init_args['password'] = password
+                    if server: init_args['server'] = server
+                # Nota: Se login não for fornecido mas server for, 
+                # o MT5 pode reclamar de "Invalid params" se path também for enviado.
+                # Para maior robustez, preferimos não enviar server sem login se path estiver presente.
+
+                is_init = mt5.initialize(**init_args)
                 
                 if is_init:
                     logger.info("✅ MT5 Worker Thread inicializado com sucesso.")
@@ -293,17 +309,33 @@ def check_mt5_connection() -> bool:
         return False
 
 def initialize_mt5(login: int = None, password: str = None, server: str = None, path: str = None) -> bool:
-    """Inicializa conexão MT5 (assumindo logado se params não fornecidos)"""
+    """Inicializa conexão MT5 (usa settings como fallback)"""
     global _mt5_init_params
+    
+    # Use settings as defaults if params not provided
+    login = login if login is not None else settings.MT5_LOGIN
+    password = password if password is not None else settings.MT5_PASSWORD
+    server = server if server is not None else settings.MT5_SERVER
+    path = path if path is not None else settings.MT5_PATH
+    
     _mt5_init_params = {'path': path, 'login': login, 'password': password, 'server': server}
     
     try:
+        # Prepara argumentos para initialize
+        init_args = {}
+        if path: init_args['path'] = str(path)
+        
+        # Só adiciona credentials se login for válido
+        if login and int(login) != 0:
+            init_args['login'] = int(login)
+            if password: init_args['password'] = password
+            if server: init_args['server'] = server
+        
+        logger.debug(f"Chamando mt5.initialize com args: { {k: v for k, v in init_args.items() if k != 'password'} }")
+        
         # Tenta inicializar no thread atual para validação imediata, 
-        # mas o worker fará sua própria inicialização.
-        if path:
-            init_ok = mt5.initialize(path=path)
-        else:
-            init_ok = mt5.initialize()
+        # mas o worker também fará sua própria inicialização.
+        init_ok = mt5.initialize(**init_args)
             
         if init_ok:
             acc_info = mt5.account_info()
@@ -313,7 +345,7 @@ def initialize_mt5(login: int = None, password: str = None, server: str = None, 
                 logger.info(f"MT5 inicializado com sucesso.")
             return True
         else:
-            logger.error(f"Falha ao inicializar MT5: {mt5.last_error()}")
+            logger.error(f"Falha ao inicializar MT5: {mt5.last_error()} | Path: {path} | Server: {server}")
             return False
     except Exception as e:
         logger.error(f"Erro ao inicializar MT5: {e}")

@@ -241,9 +241,16 @@ def init_database(db_path: str = "data/trades.db") -> bool:
                 sharpe_ratio REAL,
                 max_drawdown REAL,
                 total_profit REAL,
-                total_pips REAL
+                total_pips REAL,
+                UNIQUE(date, symbol)
             )
         ''')
+
+        # Garantir UNIQUE constraint para date e symbol na tabela performance (para o UPSERT)
+        try:
+            cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_perf_date_symbol ON performance (date, symbol)")
+        except sqlite3.OperationalError as e:
+            logger.debug(f"Aviso ao criar indice: {e}")
         
         conn.commit()
         conn.close()
@@ -312,6 +319,28 @@ def get_open_trades(db_path: str = "data/trades.db") -> List[Dict[str, Any]]:
         logger.error(f"Erro ao buscar trades abertas: {e}")
         return []
 
+def get_trade_by_ticket(ticket: int, db_path: str = "data/trades.db") -> Optional[Dict[str, Any]]:
+    """Obtém dados de uma trade pelo ticket"""
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM trades WHERE ticket = ?", (ticket,))
+        
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return None
+            
+        columns = [description[0] for description in cursor.description]
+        trade = dict(zip(columns, row))
+        
+        conn.close()
+        return trade
+    except Exception as e:
+        logger.error(f"Erro ao buscar trade por ticket {ticket}: {e}")
+        return None
+
 def get_trade_history(symbol: Optional[str] = None, limit: int = 100, db_path: str = "data/trades.db") -> List[Dict[str, Any]]:
     """Obtém histórico de trades"""
     try:
@@ -345,6 +374,127 @@ def get_trade_history(symbol: Optional[str] = None, limit: int = 100, db_path: s
     except Exception as e:
         logger.error(f"Erro ao obter histórico de trades: {e}")
         return []
+
+def update_trade_exit(ticket: int, exit_data: Dict[str, Any], db_path: str = "data/trades.db") -> bool:
+    """Atualiza registro de trade com dados de fechamento usando o ticket"""
+    if not ticket or ticket == "None":
+        logger.warning(f"Tentativa de atualizar trade com ticket invalido: {ticket}")
+        return False
+
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # SQL explícito para evitar qualquer risco de update global
+        sql = '''
+            UPDATE trades 
+            SET exit_price = ?, 
+                exit_time = ?, 
+                profit = ?, 
+                pips = ?, 
+                status = 'closed',
+                comment = CASE WHEN ? IS NOT NULL THEN ? ELSE comment END
+            WHERE ticket = ?
+        '''
+        
+        params = (
+            exit_data.get('exit_price'),
+            exit_data.get('exit_time'),
+            exit_data.get('profit'),
+            exit_data.get('pips'),
+            exit_data.get('comment'),
+            exit_data.get('comment'),
+            ticket
+        )
+        
+        cursor.execute(sql, params)
+        
+        # Se não afetou nenhuma linha pelo ticket, tenta pelo ID se fornecido
+        if cursor.rowcount == 0 and 'id' in exit_data:
+            cursor.execute('''
+                UPDATE trades 
+                SET exit_price = ?, exit_time = ?, profit = ?, pips = ?, status = 'closed'
+                WHERE id = ?
+            ''', (
+                exit_data.get('exit_price'),
+                exit_data.get('exit_time'),
+                exit_data.get('profit'),
+                exit_data.get('pips'),
+                exit_data['id']
+            ))
+
+        conn.commit()
+        conn.close()
+        
+        # Após fechar um trade, atualiza a performance automaticamente
+        update_performance_table(db_path)
+        
+        return True
+    except Exception as e:
+        logger.error(f"Erro ao atualizar fechamento da trade {ticket}: {e}")
+        return False
+
+def update_performance_table(db_path: str = "data/trades.db") -> bool:
+    """Calcula e atualiza a tabela de performance baseada no histórico de trades"""
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Obter estatísticas globais e por símbolo
+        # Estamos simplificando com estatística global para a data de hoje
+        today = datetime.now().strftime("%Y-%m-%d")
+        
+        # Pega todos os símbolos únicos operados
+        cursor.execute("SELECT DISTINCT symbol FROM trades WHERE status = 'closed'")
+        symbols = [row[0] for row in cursor.fetchall()]
+        
+        for symbol in symbols:
+            cursor.execute('''
+                SELECT 
+                    COUNT(*) as total,
+                    SUM(CASE WHEN profit > 0 THEN 1 ELSE 0 END) as wins,
+                    SUM(CASE WHEN profit <= 0 THEN 1 ELSE 0 END) as losses,
+                    SUM(profit) as total_profit,
+                    SUM(pips) as total_pips,
+                    AVG(CASE WHEN profit > 0 THEN profit ELSE NULL END) as avg_win,
+                    AVG(CASE WHEN profit <= 0 THEN ABS(profit) ELSE NULL END) as avg_loss
+                FROM trades 
+                WHERE symbol = ? AND status = 'closed'
+            ''', (symbol,))
+            
+            res = cursor.fetchone()
+            if not res or res[0] == 0: continue
+            
+            total, wins, losses, total_profit, total_pips, avg_win, avg_loss = res
+            win_rate = wins / total if total > 0 else 0
+            
+            # Profit Factor Calculation
+            cursor.execute("SELECT SUM(profit) FROM trades WHERE symbol = ? AND profit > 0 AND status = 'closed'", (symbol,))
+            gross_profit = cursor.fetchone()[0] or 0
+            cursor.execute("SELECT SUM(ABS(profit)) FROM trades WHERE symbol = ? AND profit <= 0 AND status = 'closed'", (symbol,))
+            gross_loss = cursor.fetchone()[0] or 0
+            profit_factor = gross_profit / gross_loss if gross_loss > 0 else (gross_profit if gross_profit > 0 else 0)
+
+            # Upsert na tabela performance
+            cursor.execute('''
+                INSERT INTO performance (date, symbol, total_trades, wins, losses, win_rate, profit_factor, total_profit, total_pips)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(date, symbol) DO UPDATE SET
+                    total_trades = excluded.total_trades,
+                    wins = excluded.wins,
+                    losses = excluded.losses,
+                    win_rate = excluded.win_rate,
+                    profit_factor = excluded.profit_factor,
+                    total_profit = excluded.total_profit,
+                    total_pips = excluded.total_pips
+            ''', (today, symbol, total, wins, losses, win_rate, profit_factor, total_profit, total_pips))
+
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Erro ao atualizar tabela de performance: {e}")
+        return False
 
 def save_performance_data(performance_data: Dict[str, Any], db_path: str = "data/trades.db") -> bool:
     """Salva dados de performance"""

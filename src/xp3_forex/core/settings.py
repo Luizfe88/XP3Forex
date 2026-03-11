@@ -144,6 +144,7 @@ class Settings(BaseSettings):
     MAX_DAILY_LOSS_PERCENT: float = Field(default=3.0, description="Perda máxima diária (%)")
     KILL_SWITCH_DD_PCT: float = Field(default=0.05, description="Kill Switch se DD Global > X% (0.05 = 5%)")
     LOSS_COOLDOWN_MINUTES: int = Field(default=60, description="Minutos de pausa após um Stop Loss no mesmo ativo")
+    MIN_HOLDING_TIME: int = Field(default=60, description="Tempo mínimo de permanência (segundos) antes de um Dynamic Exit")
     
     # Spread Thresholds (Points)
     MAX_SPREAD_MAJORS: int = Field(default=30, description="Max spread for Majors/Minors (points)")

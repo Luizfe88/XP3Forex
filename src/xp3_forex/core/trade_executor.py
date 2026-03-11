@@ -14,6 +14,7 @@ from xp3_forex.mt5.symbol_manager import symbol_manager
 from xp3_forex.utils.telegram_utils import send_telegram_message
 from xp3_forex.core.models import TradeSignal, Position
 from xp3_forex.utils.mt5_utils import mt5_exec, get_symbol_info
+from xp3_forex.utils.data_utils import update_trade_exit
 
 try:
     from rich.panel import Panel
@@ -613,7 +614,7 @@ class TradeExecutor:
             )
             return int(time.time())
 
-    def close_position(self, ticket: int, symbol: str) -> bool:
+    def close_position(self, ticket: int, symbol: str, ignore_cooldown: bool = False) -> bool:
         """
         Fecha uma posição específica no MT5 pelo seu ticket.
         Inclui lógica de retry para timeouts e erros recuperáveis.
@@ -633,6 +634,28 @@ class TradeExecutor:
             return False
 
         pos = position[0]
+        
+        # --- COOLDOWN CHECK (Institutional Stability) ---
+        if not ignore_cooldown:
+            min_holding = getattr(settings, "MIN_HOLDING_TIME", 60)
+            
+            # Smart Age Calculation (Handles Clock Mismatch)
+            tick = symbol_manager.get_tick(pos.symbol)
+            current_time = tick.time if tick else time.time()
+            age_seconds = current_time - pos.time
+            
+            if age_seconds < 0:
+                logger.debug(f"⚠️ Clock mismatch detectado para {pos.symbol}: age={age_seconds:.1f}s. Tratando como 0s.")
+                age_seconds = 0
+
+            if age_seconds < min_holding:
+                logger.warning(
+                    f"⏳ [COOLDOWN] Fechamento Recusado: Posição {ticket} ({pos.symbol}) "
+                    f"tem apenas {age_seconds:.1f}s de vida. Mínimo: {min_holding}s. "
+                    f"(Clock: {'Server' if tick else 'Machine'})"
+                )
+                return False
+
         symbol = pos.symbol
         volume = pos.volume
         order_type = mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
@@ -673,6 +696,13 @@ class TradeExecutor:
                     logger.info(f"⚖️ Market Execution detectado para fechar {symbol}. Usando preço 0.0.")
                 request_price = 0.0
 
+            # --- LOG DE INTENÇÃO DE SAÍDA ---
+            if attempt == 0:
+                logger.info(
+                    f"📤 INTENÇÃO DE SAÍDA: {symbol} | Ticket: {ticket} | Vol: {volume:.2f} | "
+                    f"Preço Mercado: {price:.{digits}f}"
+                )
+
             request = {
                 "action": mt5.TRADE_ACTION_DEAL,
                 "symbol": symbol,
@@ -699,7 +729,22 @@ class TradeExecutor:
                 return False
 
             if result.retcode == mt5.TRADE_RETCODE_DONE:
-                logger.info(f"✅ Posição {ticket} ({symbol}) FECHADA com sucesso (Tentativa {attempt+1}).")
+                logger.info(
+                    f"✅ POSIÇÃO FECHADA com sucesso | Ticket: {ticket} | "
+                    f"Símbolo: {symbol} | Preço Saída: {result.price:.{digits}f} | "
+                    f"Comment: {result.comment}"
+                )
+                
+                # --- ATUALIZAÇÃO DO BANCO DE DADOS (SQLite) ---
+                exit_data = {
+                    'exit_price': result.price,
+                    'exit_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'profit': pos.profit + pos.swap + getattr(pos, 'commission', 0),
+                    'pips': result.volume * 0, # Pips calculation can be improved if needed
+                    'comment': f"Close:{result.comment}"
+                }
+                update_trade_exit(ticket, exit_data)
+                
                 return True
                 
             # Fallback for Error 10013 (Invalid Request) - Some brokers require price 0.0 even if not explicitly Market Execution
@@ -708,7 +753,21 @@ class TradeExecutor:
                 request["price"] = 0.0
                 result = mt5.order_send(request)
                 if result and result.retcode == mt5.TRADE_RETCODE_DONE:
-                    logger.info(f"✅ Posição {ticket} ({symbol}) FECHADA via Fallback.")
+                    logger.info(
+                        f"✅ POSIÇÃO FECHADA via Fallback | Ticket: {ticket} | "
+                        f"Símbolo: {symbol} | Preço Saída: {result.price:.{digits}f}"
+                    )
+                    
+                    # --- ATUALIZAÇÃO DO BANCO DE DADOS (SQLite - Fallback) ---
+                    exit_data = {
+                        'exit_price': result.price,
+                        'exit_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        'profit': pos.profit + pos.swap + getattr(pos, 'commission', 0),
+                        'pips': 0,
+                        'comment': "Close:Fallback"
+                    }
+                    update_trade_exit(ticket, exit_data)
+
                     return True
 
             # Recoverable Errors

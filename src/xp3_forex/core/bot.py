@@ -198,10 +198,19 @@ class XP3Bot:
 
             if success:
                 term_info = mt5.terminal_info()
+                acc_info = mt5.account_info()
+                if acc_info:
+                    # Guard against account mismatch (Institutional)
+                    last_acc = getattr(self, '_last_acc_number', None)
+                    if last_acc and last_acc != acc_info.login:
+                        logger.critical(f"⚠️ MUDANÇA DE CONTA DETECTADA! Antiga: {last_acc} | Nova: {acc_info.login}")
+                        send_telegram_message(f"⚠️ *Account Switch Detected*\nBot moved from {last_acc} to {acc_info.login}. Verification required.")
+                    self._last_acc_number = acc_info.login
+                
                 if term_info and not term_info.trade_allowed:
                     logger.critical("⚠️ MT5 Conectado, mas o botão 'ALGO TRADING' está DESATIVADO!")
                 elif term_info:
-                    logger.info("✅ MT5 Conectado e Algo Trading habilitado.")
+                    logger.info(f"✅ MT5 Conectado e Algo Trading habilitado. Conta: {acc_info.login if acc_info else 'N/A'}")
 
             return success
         except Exception as e:
@@ -371,6 +380,9 @@ class XP3Bot:
                 }
                 save_trade(trade_data)
                 
+                # Clear pending signals for this symbol in the current batch
+                self.pending_signals = [s for s in self.pending_signals if s.symbol != signal.symbol]
+                
                 return True
                 
         except Exception as e:
@@ -398,7 +410,41 @@ class XP3Bot:
                 for symbol in list(self.positions.keys()):
                     pos = self.positions[symbol]
                     if pos.ticket not in real_tickets:
-                        logger.info(f"🔄 Sincronismo: Removendo {symbol} da memória (fechado externamente ou no MT5)")
+                        logger.info(
+                            f"🔄 Sincronismo: Removendo {symbol} da memória (fechado externamente ou no MT5) | "
+                            f"Ticket: {pos.ticket} | {pos.order_type} | Vol: {pos.volume:.2f} | Profit: ${pos.profit:.2f}"
+                        )
+                        
+                        # --- ATUALIZAÇÃO DO BANCO DE DADOS (FECHAMENTO EXTERNO) ---
+                        try:
+                            # Busca o deal de fechamento no histórico para ter dados precisos
+                            # De acordo com a documentação do MT5, posições são compostas por deals
+                            # Vamos tentar buscar o último deal desse ticket
+                            history_deals = mt5.history_deals_get(position=pos.ticket)
+                            if history_deals and len(history_deals) > 0:
+                                # O último deal geralmente é o de fechamento
+                                last_deal = history_deals[-1]
+                                exit_data = {
+                                    'exit_price': last_deal.price,
+                                    'exit_time': datetime.fromtimestamp(last_deal.time).strftime('%Y-%m-%d %H:%M:%S'),
+                                    'profit': last_deal.profit + last_deal.swap + last_deal.commission,
+                                    'pips': 0,
+                                    'comment': f"Sync:{last_deal.comment}"
+                                }
+                                update_trade_exit(pos.ticket, exit_data)
+                            else:
+                                # Fallback se não achar histórico (pelo menos marca como closed)
+                                exit_data = {
+                                    'exit_price': pos.current_price,
+                                    'exit_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                    'profit': pos.profit,
+                                    'pips': 0,
+                                    'comment': "Sync:External"
+                                }
+                                update_trade_exit(pos.ticket, exit_data)
+                        except Exception as db_err:
+                            logger.error(f"Erro ao sincronizar fechamento externo no DB para {symbol}: {db_err}")
+
                         del self.positions[symbol]
 
                 # b) Adicionar à memória o que está no MT5 mas o robô não sabia (ex: após restart)
@@ -406,8 +452,19 @@ class XP3Bot:
                     if p.symbol not in self.positions:
                         logger.info(f"🔄 Sincronismo: Redescobrindo posição {p.symbol} (Ticket: {p.ticket})")
                         
+                        # --- RECUPERAÇÃO DE SL/TP VIRTUAL (DB HELP) ---
+                        # Tenta buscar no banco de dados se temos SL/TP salvos para esse ticket
+                        db_trade = get_trade_by_ticket(p.ticket)
+                        if db_trade:
+                            sl_val = db_trade.get('stop_loss', 0) or 0
+                            tp_val = db_trade.get('take_profit', 0) or 0
+                            logger.info(f"📁 [RECOVERY] Restaurando SL/TP Virtual do DB para {p.symbol}: SL={sl_val} | TP={tp_val}")
+                        else:
+                            sl_val = p.sl
+                            tp_val = p.tp
+                        
                         # Tenta estimar SL dist ou usa default
-                        sl_dist = abs(p.price_open - p.sl) if p.sl > 0 else 0
+                        sl_dist = abs(p.price_open - sl_val) if sl_val > 0 else 0
                         
                         self.positions[p.symbol] = Position(
                             symbol=p.symbol,
@@ -415,8 +472,8 @@ class XP3Bot:
                             volume=p.volume,
                             entry_price=p.price_open,
                             current_price=p.price_current,
-                            stop_loss=p.sl,
-                            take_profit=p.tp,
+                            stop_loss=sl_val,
+                            take_profit=tp_val,
                             profit=p.profit,
                             pips=0, # Calculado abaixo
                             open_time=datetime.fromtimestamp(p.time),
@@ -444,16 +501,26 @@ class XP3Bot:
                     # --- GESTÃO DINÂMICA (NOVO) ---
                     
                     # A. Evaluate Dynamic Exit (Exhaustion/Reversal)
+                    # DOUBLE CHECK: Verifies position still exists in MT5 before processing
+                    # This prevents "[Errno 22] Invalid argument" if position was closed in the middle of the cycle
+                    check_pos = mt5.positions_get(ticket=position.ticket)
+                    if check_pos is None or len(check_pos) == 0:
+                        logger.warning(f"⚠️ Posição {position.ticket} ({symbol}) já não existe no MT5. Removendo da memória.")
+                        closed_positions.append(symbol)
+                        continue
+
                     # Fetch fresh data for evaluation
                     df_eval = self.cache.get_rates(symbol, 15, 50)
                     should_exit, exit_reason = self.strategy.evaluate_exit(position, df_eval)
                     
                     if should_exit:
                         logger.warning(f"🚀 [DYNAMIC EXIT] {exit_reason} em {symbol} (Ticket: {position.ticket})")
-                        if trade_executor.close_position(position.ticket, symbol):
+                        if trade_executor.close_position(position.ticket, symbol, ignore_cooldown=True):
                             closed_positions.append(symbol)
                             self._update_stats_after_close(position)
                             send_telegram_message(f"🚀 *DYNAMIC EXIT EXECUTADO*\nAtivo: `{symbol}`\nMotivo: `{exit_reason}`\nLucro: `${position.profit:.2f}`")
+                            # Batched memory cleanup
+                            self.pending_signals = [s for s in self.pending_signals if s.symbol != symbol]
                             continue
 
                     # B. Proactive Break-Even (BE) Management
@@ -489,8 +556,8 @@ class XP3Bot:
                         reason = "STOP LOSS VIRTUAL" if sl_hit else "TAKE PROFIT VIRTUAL"
                         logger.warning(f"🎯 [TRIGGER] {reason} atingido para {symbol} (Ticket: {position.ticket})")
                         
-                        # EXECUÇÃO REAL DO FECHAMENTO
-                        if trade_executor.close_position(position.ticket, symbol):
+                        # EXECUÇÃO REAL DO FECHAMENTO (Ignore cooldown for critical exits)
+                        if trade_executor.close_position(position.ticket, symbol, ignore_cooldown=True):
                             closed_positions.append(symbol)
                             # Update Daily Stats
                             if position.profit > 0:
@@ -766,7 +833,10 @@ class XP3Bot:
                 self.check_friday_close_guard()
 
             except Exception as e:
-                logger.error(f"Erro no consumer_loop: {e}")
+                if "[Errno 22]" in str(e):
+                    logger.warning(f"⚠️ MT5 Argument Error (Errno 22) no loop: {e}. Recuperando...")
+                else:
+                    logger.error(f"Erro no consumer_loop: {e}")
                 time.sleep(1)
             
             # CPU Respiro (Obrigatório)
