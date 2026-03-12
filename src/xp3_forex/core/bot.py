@@ -498,7 +498,32 @@ class XP3Bot:
                     position.current_price = current_price
                     position.profit = p_mt5.profit
 
+                    # Update max floating profit (High-Water Mark)
+                    position.max_floating_profit = max(getattr(position, 'max_floating_profit', 0.0), position.profit)
+
                     # --- GESTÃO DINÂMICA (NOVO) ---
+                    
+                    # A.0 Hard Dollar Stop (Travão de Emergência)
+                    if position.profit <= settings.MAX_LOSS_DOLLARS:
+                        logger.warning(f"🚨 [EMERGENCY EXIT] Max Dollar Loss reached para {symbol} (Ticket: {position.ticket})")
+                        if trade_executor.close_position(position.ticket, symbol, ignore_cooldown=True):
+                            closed_positions.append(symbol)
+                            self._update_stats_after_close(position)
+                            send_telegram_message(f"🚨 *EMERGENCY EXIT EXECUTADO*\nAtivo: `{symbol}`\nMotivo: `Max Dollar Loss reached`\nFechado em: `${position.profit:.2f}`")
+                            self.pending_signals = [s for s in self.pending_signals if s.symbol != symbol]
+                            continue
+
+                    # A.1 Profit Trailing Shield (High-Water Mark)
+                    if position.max_floating_profit > settings.PROFIT_ACTIVATION_THRESHOLD:
+                        trailing_stop_profit = position.max_floating_profit * (1 - settings.PROFIT_TRAILING_PERCENT)
+                        if position.profit <= trailing_stop_profit:
+                            logger.warning(f"🛡️ [DYNAMIC EXIT] Profit Trailing Shield triggered for {symbol} (Ticket: {position.ticket}). Max Profit was ${position.max_floating_profit:.2f}, closed at ${position.profit:.2f}")
+                            if trade_executor.close_position(position.ticket, symbol, ignore_cooldown=True):
+                                closed_positions.append(symbol)
+                                self._update_stats_after_close(position)
+                                send_telegram_message(f"🛡️ *PROFIT TRAILING SHIELD EXECUTADO*\nAtivo: `{symbol}`\nMax Profit: `${position.max_floating_profit:.2f}`\nFechado em: `${position.profit:.2f}`")
+                                self.pending_signals = [s for s in self.pending_signals if s.symbol != symbol]
+                                continue
                     
                     # A. Evaluate Dynamic Exit (Exhaustion/Reversal)
                     # DOUBLE CHECK: Verifies position still exists in MT5 before processing
@@ -524,6 +549,23 @@ class XP3Bot:
                             continue
 
                     # B. Proactive Break-Even (BE) Management
+                    
+                    # Dollar-based Auto Break-Even (Risco Zero)
+                    if position.profit >= settings.BREAK_EVEN_TRIGGER:
+                        tick = mt5.symbol_info_tick(symbol)
+                        if tick:
+                            spread_val = tick.ask - tick.bid
+                            be_price = position.entry_price + spread_val if position.order_type == "BUY" else position.entry_price - spread_val
+                            
+                            if position.order_type == "BUY" and position.stop_loss < be_price:
+                                position.stop_loss = be_price
+                                logger.info(f"🛡️ [RISK-FREE] Profit reached Break-Even Trigger (${settings.BREAK_EVEN_TRIGGER}). Virtual SL moved to Entry Price + Spread ({be_price:.5f}) for {symbol}.")
+                                send_telegram_message(f"🛡️ *RISK-FREE ATIVADO*\nAtivo: `{symbol}`\nLucro Flutuante: `${position.profit:.2f}`\nVirtual SL movido para: `{be_price:.5f}`")
+                            elif position.order_type == "SELL" and position.stop_loss > be_price:
+                                position.stop_loss = be_price
+                                logger.info(f"🛡️ [RISK-FREE] Profit reached Break-Even Trigger (${settings.BREAK_EVEN_TRIGGER}). Virtual SL moved to Entry Price - Spread ({be_price:.5f}) for {symbol}.")
+                                send_telegram_message(f"🛡️ *RISK-FREE ATIVADO*\nAtivo: `{symbol}`\nLucro Flutuante: `${position.profit:.2f}`\nVirtual SL movido para: `{be_price:.5f}`")
+
                     # Determine Pips or R
                     point = self.symbol_manager.get_point(symbol)
                     if point > 0:

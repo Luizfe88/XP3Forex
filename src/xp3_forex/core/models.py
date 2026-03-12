@@ -32,3 +32,4 @@ class Position:
     ticket: int = 0
     partial_taken: bool = False
     initial_sl_dist: float = 0.0
+    max_floating_profit: float = 0.0
