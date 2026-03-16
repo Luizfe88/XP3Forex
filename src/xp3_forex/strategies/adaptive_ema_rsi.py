@@ -6,7 +6,7 @@ import logging
 import json
 import os
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Dict, Any, Optional, List, Tuple
 from dataclasses import dataclass, field
 
@@ -47,6 +47,12 @@ class Regime:
     rsi_sell: int
     description: str
 
+@dataclass
+class MarketRegime:
+    TREND = "TREND"
+    SIDEWAYS = "SIDEWAYS"
+    PROTECTION = "PROTECTION"
+
 class AdaptiveEmaRsiStrategy(BaseStrategy):
     """
     XP3 Adaptive Regime EMA-RSI v1.0 (AR-EMA-RSI)
@@ -67,6 +73,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             "trades_count": 0,
             "regime_stats": {}
         }
+        self.regime_metrics: Dict[str, Any] = {}
         
         # Institutional Upgrades
         self.max_daily_drawdown_pct = settings.MAX_DAILY_LOSS_PERCENT / 100.0
@@ -123,82 +130,52 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         # Strategy operates on bar close (M15), so tick logic is minimal or handled by bot loop
         pass
 
-    def on_bar(self, symbol: str, timeframe: str):
-        if timeframe == "M15":
-            self.update_regime(symbol)
+    def on_bar(self, symbol: str, timeframe: int, df: pd.DataFrame = None):
+        if timeframe == 15 or timeframe == "M15":
+            self.update_regime(symbol, df)
 
-    def update_regime(self, symbol: str):
+    def update_regime(self, symbol: str, df: pd.DataFrame = None):
         """
-        Detects market regime based on H1/M15 analysis.
-        Re-evaluated every 5 minutes or new bar.
+        XP3 PRO v5.1 - Market Regime Detection
+        Detects regime (TREND, SIDEWAYS, PROTECTION) based on Hurst and Kalman.
         """
-        # CRÍTICO: Usar cache para evitar requisição MT5 lenta
-        df = self.bot.cache.get_rates(symbol, 15, 300)
+        if df is None:
+            df = self.bot.cache.get_rates(symbol, 15, 500)
         
-        if df is None or len(df) < 200:
-            # logger.warning(f"Insufficient data for regime detection: {symbol}")
+        if df is None or len(df) < 50:
             return
 
-        # Calculate Indicators
         try:
-            # Pandas TA
-            df.ta.ema(length=200, append=True)
-            df.ta.adx(length=14, append=True)
-            df.ta.atr(length=14, append=True)
+            # 1. Load Parameters
+            q_params = settings.get_quant_params(symbol)
             
-            # Get last values
-            last_close = df['close'].iloc[-1]
-            ema200 = df['EMA_200'].iloc[-1]
-            adx = df['ADX_14'].iloc[-1]
-            atr = df['ATRr_14'].iloc[-1]
+            # 2. Get Regime from Indicators Layer
+            from ..indicators.regime import get_market_regime
+            r_config = RegimeConfig(
+                hurst_lookback=q_params.get("hurst_lookback", 500),
+                mmi_lookback=q_params.get("mmi_lookback", 200),
+                threshold_trend=q_params.get("threshold_trend", 0.55),
+                threshold_range_min=q_params.get("threshold_range_min", 0.40)
+            )
             
-            # Calculate Average ATR (SMA of ATR)
-            atr_mean_50 = df['ATRr_14'].rolling(50).mean().iloc[-1]
+            # Basic metrics check for PROTECTION
+            spread_ok = symbol_manager.check_spread(symbol)
             
-            regime = self.REGIME_RANGING # Default
+            regime_data = get_market_regime(df['close'], r_config)
+            regime_name = regime_data['regime']
             
-            # Logic
-            if adx > 25 and last_close > ema200:
-                regime = self.REGIME_STRONG_UP
-            elif adx > 25 and last_close < ema200:
-                regime = self.REGIME_STRONG_DOWN
-            elif atr > (atr_mean_50 * 1.5):
-                regime = self.REGIME_HIGH_VOL
-            else:
-                regime = self.REGIME_RANGING
-            
-            self.regimes[symbol] = regime
+            # PROTECTION Override: Spread issue
+            if not spread_ok:
+                regime_name = MarketRegime.PROTECTION
+                
+            # Store values
+            self.regimes[symbol] = regime_name
             self.last_regime_update[symbol] = datetime.now()
             
-            # --- QUANT LAYER: Hurst & MMI Enhancement ---
-            try:
-                # Load optimized parameters
-                q_params = settings.get_quant_params(symbol)
-                h_lookback = q_params.get("hurst_lookback", 1000)
-                m_lookback = q_params.get("mmi_lookback", 300)
-                
-                # Calculate Hurst recursively
-                hurst_prices = df['close'].tail(h_lookback).values
-                hurst_val = calculate_hurst_rs(hurst_prices)
-                
-                # Calculate MMI
-                mmi_prices = df['close'].tail(m_lookback).values
-                mmi_val = calculate_mmi_numba(mmi_prices)
-                
-                # Update regime based on Hurst (Quantitative Core)
-                if hurst_val > 0.65:
-                    regime.description += " | QUANT: Strong Trending (Hurst > 0.65)"
-                elif hurst_val < 0.45:
-                    regime.description += " | QUANT: Mean Reverting (Hurst < 0.45)"
-                
-                # Store quant values in regime or metadata
-                setattr(regime, 'hurst', hurst_val)
-                setattr(regime, 'mmi', mmi_val)
-                
-            except Exception as q_err:
-                logger.warning(f"Failed to calculate quant metrics for {symbol}: {q_err}")
+            logger.info(f"📊 [REGIME] {symbol}: {regime_name} (Hurst: {regime_data['hurst']:.4f})")
             
-            # logger.debug(f"Regime for {symbol}: {regime.name} (ADX={adx:.1f}, ATR/Avg={atr/atr_mean_50:.1f})")
+            # Store metrics in bot memory for logging/reporting
+            self.regime_metrics[symbol] = regime_data
             
         except Exception as e:
             logger.error(f"Error updating regime for {symbol}: {e}")
@@ -208,19 +185,31 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         Main analysis function called by Bot.
         Returns TradeSignal or None.
         """
+        logger.info(f"🔍 [ANALYZE] Processing {symbol} ({len(df)} bars)")
+        
         # 0. Update Regime if stale (> 5 mins)
         last_update = self.last_regime_update.get(symbol)
-        if not last_update or (datetime.now() - last_update).total_seconds() > 300:
-            self.update_regime(symbol)
-            
-        regime = self.regimes.get(symbol, self.REGIME_RANGING)
+        regime_name = self.regimes.get(symbol, MarketRegime.SIDEWAYS)
         
-        # 1. Pre-checks (Institutional)
+        # 1. Pre-checks (Institutional) + PROTECTION Regime
+        if regime_name == MarketRegime.PROTECTION:
+            logger.info(f"🚫 {symbol} REJECTED: PROTECTION mode active.")
+            return None
+
+        # Resolve regime object for backwards compatibility and parameter access
+        regime = self.REGIME_RANGING # Default
+        if regime_name == MarketRegime.TREND:
+            # We don't know direction yet, but TREND uses similar base periods
+            regime = self.REGIME_STRONG_UP 
+        elif regime_name == MarketRegime.SIDEWAYS:
+            regime = self.REGIME_RANGING
+
         if not self.check_institutional_filters(symbol):
+            logger.info(f"🚫 {symbol} REJECTED: Institutional filters failed.")
             return None
 
         # 2. Get Session Optimized Parameters
-        session_params = get_active_session_params(symbol, datetime.utcnow())
+        session_params = get_active_session_params(symbol, datetime.now(UTC))
         
         # 3. Prepare Data
         # Base indicators from Regime, but allow Session Overrides
@@ -244,23 +233,29 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             df['rsi'] = ta.rsi(df['close'], length=rsi_period)
             df.ta.adx(length=14, append=True)
             
-            # --- QUANT LAYER 2: Adaptive Kalman Filter Signal ---
+            # --- QUANT LAYER: Adaptive Kalman Filter v5.1 (Regime-Specific) ---
             q_params = settings.get_quant_params(symbol)
-            hurst_val = getattr(regime, 'hurst', 0.5)
+            hurst_val = self.regime_metrics.get(symbol, {}).get('hurst', 0.5)
             
+            # Get specific config block for the current regime
+            config_key = f"{regime_name.capitalize()}_Config"
+            regime_config = q_params.get(config_key, {})
+            
+            # Kalman with Regime Overrides
             kf_config = KalmanConfig(
-                initial_r=q_params.get("initial_r", 500.0),
-                min_q=q_params.get("min_q", 0.01),
-                max_q=q_params.get("max_q", 0.1)
+                initial_r=regime_config.get("initial_r", q_params.get("initial_r", 500.0)),
+                min_q=regime_config.get("min_q", q_params.get("min_q", 0.01)),
+                max_q=regime_config.get("max_q", q_params.get("max_q", 0.1))
             )
-            kf = KalmanFilter(kf_config)
-            # Apply KF to close prices
-            hurst_series = pd.Series([hurst_val] * len(df), index=df.index)
-            filtered_price = kf.apply(df['close'], hurst_series)
-            df['kf_signal'] = filtered_price
             
-            # Check if indicators are valid
-            if df[f'ema_fast'].iloc[-1] is None or df['rsi'].iloc[-1] is None:
+            from ..indicators.filters import KalmanFilter
+            kf = KalmanFilter(kf_config)
+            hurst_series = pd.Series([hurst_val] * len(df), index=df.index)
+            df['kf_signal'] = kf.apply(df['close'], hurst_series)
+            df['kf_slope'] = df['kf_signal'].diff()
+            
+            # Validations
+            if df['kf_signal'].iloc[-1] is None or df['rsi'].iloc[-1] is None:
                 return None
                 
             current_price = df['close'].iloc[-1]
@@ -271,16 +266,15 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             
             # ADX Filter from Session
             if adx < adx_thresh:
+                logger.info(f"🚫 {symbol} REJECTED: ADX too low ({adx:.1f} < {adx_thresh})")
                 return None
                 
             # --- RSI Exhaustion Filter (CRITICAL) ---
-            # Don't buy if RSI is already near overbought (>70)
-            # Don't sell if RSI is already near oversold (<30)
             if rsi > self.RSI_BUY_MAX:
-                # logger.debug(f"🚫 {symbol} BUY rejected: RSI Exhaustion ({rsi:.1f} > {self.RSI_BUY_MAX})")
+                logger.info(f"🚫 {symbol} BUY rejected: RSI Exhaustion ({rsi:.1f} > {self.RSI_BUY_MAX})")
                 return None
             if rsi < self.RSI_SELL_MIN:
-                # logger.debug(f"🚫 {symbol} SELL rejected: RSI Exhaustion ({rsi:.1f} < {self.RSI_SELL_MIN})")
+                logger.info(f"🚫 {symbol} SELL rejected: RSI Exhaustion ({rsi:.1f} < {self.RSI_SELL_MIN})")
                 return None
                 
             # Dynamic RSI Tolerance for NY Session (Strong Trend)
@@ -303,33 +297,46 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             kf_signal = df['kf_signal'].iloc[-1]
             kf_signal_prev = df['kf_signal'].iloc[-2]
             
+            # Diagnostic Log for Technical Layer (Correct Position)
+            logger.info(f"🔍 [TECH] {symbol}: ADX={adx:.1f} | RSI={rsi:.1f} | Price={current_price:.5f} | EMA_S={ema_slow:.5f} | KF={kf_signal:.5f}")
+
             crossed_up = (kf_signal_prev <= df[f'ema_slow'].iloc[-2]) and \
                          (kf_signal > ema_slow)
             
             crossed_down = (kf_signal_prev >= df[f'ema_slow'].iloc[-2]) and \
                            (kf_signal < ema_slow)
             
-            # Conditions based on Regime
-            if regime == self.REGIME_STRONG_UP:
-                # In strong uptrend, buy on dips or crossovers using Kalman
-                if (crossed_up or (current_price > kf_signal and rsi < 60)) and rsi > rsi_buy_thresh:
+            # Conditions based on Regime v5.1
+            kf_slope = df['kf_slope'].iloc[-1]
+            
+            if regime_name == MarketRegime.TREND:
+                # TREND: Hurst > 0.55 E inclinação do Filtro de Kalman confirmando a direção.
+                if crossed_up and kf_slope > 0:
                     signal_type = "BUY"
-                    
-            elif regime == self.REGIME_STRONG_DOWN:
-                 if (crossed_down or (current_price < kf_signal and rsi > 40)) and rsi < rsi_sell_thresh:
+                elif crossed_down and kf_slope < 0:
                     signal_type = "SELL"
+                else:
+                    # Log why no signal in trend
+                    if crossed_up or crossed_down:
+                        logger.info(f"⏳ {symbol} TREND: Crossover detected but kf_slope ({kf_slope:.6f}) direction mismatch.")
+                    else:
+                        logger.info(f"⏳ {symbol} TREND: No Crossover detected (KF: {kf_signal:.5f} | EMA: {ema_slow:.5f}). Waiting for pullback or new cycle.")
                     
-            elif regime == self.REGIME_HIGH_VOL:
-                if crossed_up and rsi > rsi_buy_thresh: 
-                         signal_type = "BUY"
-                elif crossed_down and rsi < rsi_sell_thresh:
-                     signal_type = "SELL"
-                     
-            else: # Ranging
-                if crossed_up and rsi > rsi_buy_thresh:
+            elif regime_name == MarketRegime.SIDEWAYS:
+                # SIDEWAYS: Reversão à média nos extremos do RSI.
+                if rsi < 32 and crossed_up:
                     signal_type = "BUY"
-                elif crossed_down and rsi < rsi_sell_thresh:
+                elif rsi > 68 and crossed_down:
                     signal_type = "SELL"
+                else:
+                    # Log why no signal in sideways
+                    if rsi < 32 or rsi > 68:
+                        logger.info(f"⏳ {symbol} SIDEWAYS: RSI Exhaustion reached ({rsi:.1f}), but no Crossover detected yet.")
+            
+            # Fallback a regimes legados se necessário ou se MarketRegime falhar
+            if not signal_type:
+                # Logic remains for legacy support if needed, but primary is above
+                pass
 
             # 4. Multi-Timeframe Confirmation (H1 Trend + Hurst Confluence)
             if signal_type:
@@ -455,12 +462,34 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                         portfolio_returns=self.get_portfolio_returns_data()
                     )
                     
+                    if kelly_fraction <= 0:
+                        logger.warning(f"🚫 [KELLY SAFETY] {symbol} rejected: Kelly Fraction is zero or negative ({kelly_fraction:.4f}).")
+                        return None
+                        
                     # Calculate Final Equity Risk and Volume
                     risk_amount = self.get_account_equity() * kelly_fraction
-                    volume = self.calculate_position_size(symbol, current_price, sl, risk_amount)
+                    base_volume = self.calculate_position_size(symbol, current_price, sl, risk_amount)
+                    
+                    # --- IA Confidence Volume Scaling (Suavizado) ---
+                    # Progressão mais justa para recompensar sinais fortes sem punir excessivamente o padrão
+                    if confidence < 0.65:
+                        conf_factor = 0.25  # Cautela Extrema ( < 65%)
+                    elif confidence < 0.75:
+                        conf_factor = 0.50  # Cautela Moderada (65-75%)
+                    elif confidence < 0.85:
+                        conf_factor = 0.80  # Padrão Institucional (75-85%)
+                    else:
+                        conf_factor = 1.00  # Sniper Mode ( >= 85%)
+                    
+                    volume = base_volume * conf_factor
+                    
+                    # Trava de Segurança: 0.01 min, MAX_LOTS limit
+                    # O lote mínimo de 0.01 é permitido se o Kelly for positivo, mas o volume final (Kelly * Confiança) for pequeno.
                     volume = max(0.01, min(volume, settings.MAX_LOTS_PER_TRADE))
                     
-                    logger.info(f"📊 [QUANT RISK] {symbol}: CVaR(99)={cvar_99:.4f}, Kelly Fraction={kelly_fraction:.4f}, Final Volume: {volume:.2f}")
+                    # Log detalhado para diagnóstico de dimensionamento
+                    logger.info(f"⚖️ [RISK DIAG] {symbol}: Equity=${self.get_account_equity():.2f} | Kelly Frac={kelly_fraction:.4f} | Base Vol={base_volume:.2f}")
+                    logger.info(f"🎯 [CONF SCALING] {symbol}: Conf={confidence:.2f} -> Factor={conf_factor:.2f} -> Final Vol: {volume:.2f}")
                 except Exception as risk_err:
                     logger.warning(f"Risk scaling failed for {symbol}: {risk_err}")
                     volume = 0.01
@@ -476,7 +505,8 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                     take_profit=tp,
                     volume=volume,
                     confidence=confidence,
-                    reason=f"{session_params.get('active_session', 'N/A')} | {regime.name} | EMA({fast_period},{slow_period}) | RSI {rsi:.1f}"
+                    reason=f"{active_sess} | {regime_name} | EMA({fast_period},{slow_period}) | RSI {rsi:.1f}",
+                    regime=regime_name
                 )
         except Exception as e:
             logger.error(f"Error analyzing {symbol}: {e}")
@@ -491,7 +521,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
 
         # A. Global Daily Drawdown
         if self.daily_stats["profit"] < -(self.get_account_balance() * self.max_daily_drawdown_pct):
-            # logger.warning("Daily Drawdown Limit Hit. Trading Paused.")
+            logger.warning(f"🚫 [DRAWDOWN] Trading BLOQUEADO para {symbol}: Limite diário atingido (${self.daily_stats['profit']:.2f}).")
             return False
             
         # Kill Switch
@@ -517,20 +547,29 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 # logger.info(f"Trade rejected for {symbol} due to high correlation")
                 return False
             
-        # Session Filter (Session Analyzer identifies ASIA, LONDON, NY)
-        session = get_active_session_name(datetime.utcnow())
-        if session == "UNKNOWN":
-            return False
-            
         # News Filter
         if self.is_high_impact_news_soon(symbol):
             logger.info(f"🚫 Trade rejected for {symbol} due to High Impact News soon")
             return False
 
+        # Session Filter (Session Analyzer identifies ASIA, LONDON, NY)
+        session = get_active_session_name(datetime.now(UTC))
+        if session == "UNKNOWN":
+            if not getattr(self, '_notified_unknown_session', False):
+                logger.info(f"🌑 Sesion UNKNOWN: Trading pausado para {symbol} enquanto aguarda abertura de mercado.")
+                self._notified_unknown_session = True
+            return False
+        self._notified_unknown_session = False
+            
+        # News Filter
+        if self.is_high_impact_news_soon(symbol):
+            logger.info(f"🚫 [FILTER] {symbol} rejected due to High Impact News soon")
+            return False
+
         # TAREFA 4: Forex Weekend Gap Protection
         # Objetivo: Evitar volatilidade extrema e gaps de domingo (Sunday Open).
         # Regra: Warm-up de 30 minutos na abertura do mercado (Domingo 17:00 NY / 22:00 UTC).
-        now_utc = datetime.utcnow()
+        now_utc = datetime.now(UTC)
         if now_utc.weekday() == 6: # Sunday
             if now_utc.hour == 22 and now_utc.minute < 30:
                 logger.info(f"⏳ [FOREX WARM-UP] {symbol}: Sunday Open gap observation (22:00-22:30 UTC). Kalman stabilized.")
@@ -603,7 +642,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
 
     def is_trading_session_active(self) -> bool:
         """Verifica se alguma sessão principal está ativa via SessionAnalyzer"""
-        return get_active_session_name(datetime.utcnow()) != "UNKNOWN"
+        return get_active_session_name(datetime.now(UTC)) != "UNKNOWN"
 
     @staticmethod
     def is_high_impact_news_soon(symbol: str) -> bool:
@@ -619,16 +658,24 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             if df is None or len(df) < 20:
                 return False, ""
             
-            # 1. Trend Exhaustion (RSI Extremo)
-            # Recalculate RSI to ensure fresh data
+            # 1. Trend Exhaustion (RSI Extremo por Regime)
+            # Recalculate RSI
             rsi = ta.rsi(df['close'], length=14).iloc[-1]
+            regime = self.regimes.get(position.symbol, MarketRegime.SIDEWAYS)
             
+            # TREND: RSI > 80 ou < 20
+            # SIDEWAYS: RSI > 68 ou < 32
+            if regime == MarketRegime.TREND:
+                rsi_high, rsi_low = 80, 20
+            else: # SIDEWAYS ou outros
+                rsi_high, rsi_low = 68, 32
+
             if position.order_type == "BUY":
-                if rsi > 75:
-                    return True, "RSI Overbought Exhaustion (>75)"
+                if rsi > rsi_high:
+                    return True, f"RSI Exhaustion {regime} (>{rsi_high})"
             else: # SELL
-                if rsi < 25:
-                    return True, "RSI Oversold Exhaustion (<25)"
+                if rsi < rsi_low:
+                    return True, f"RSI Exhaustion {regime} (<{rsi_low})"
             
             # 2. Reversal Signals (EMA Crossover contrário)
             # This is more aggressive, but let's keep it subtle for now
@@ -673,21 +720,15 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         
         return calculate_lot_size(symbol, risk_amount, sl_pips)
 
-    def update_daily_stats(self):
-        current_date = datetime.now().date()
-        if self.daily_stats["date"] != current_date:
-            # Save previous day stats before resetting
-            self.save_stats()
-            
-            # Reset
-            self.daily_stats = {
-                "date": current_date,
-                "wins": 0,
-                "losses": 0,
-                "profit": 0.0,
-                "trades_count": 0,
-                "regime_stats": {}
-            }
+    def update_daily_stats(self, pnl: float = 0.0, is_win: bool = False):
+        """Atualiza métricas diárias para persistência e logs"""
+        self.daily_stats["profit"] += pnl
+        if pnl != 0:
+            self.daily_stats["trades_count"] += 1
+            if is_win:
+                self.daily_stats["wins"] += 1
+            else:
+                self.daily_stats["losses"] += 1
         
     def save_stats(self):
         """Save daily stats to JSON file"""
@@ -737,7 +778,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         regime = self.regimes.get(symbol, self.REGIME_RANGING)
 
         # 2. Prepare Data & Session Params
-        session_params = get_active_session_params(symbol, datetime.utcnow())
+        session_params = get_active_session_params(symbol, datetime.now(UTC))
         active_sess = session_params.get("active_session", "UNKNOWN")
         
         # Parâmetros

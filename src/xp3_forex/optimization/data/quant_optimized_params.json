@@ -21,11 +21,29 @@
         "max_q": 0.1258345583439801
     },
     "XAUUSD": {
-        "hurst_lookback": 784,
-        "mmi_lookback": 236,
-        "initial_r": 840.362951204623,
-        "min_q": 0.009956204632364516,
-        "max_q": 0.0619408993841809
+        "hurst_lookback": 622,
+        "mmi_lookback": 200,
+        "threshold_trend": 0.55,
+        "threshold_range_min": 0.4,
+        "hard_dollar_stop": 23120.70000000004,
+        "last_calibrated": "2026-03-13T20:27:18.508596",
+        "Trend_Config": {
+            "hurst_lookback": 622,
+            "initial_r": 620.275118986909,
+            "min_q": 0.012289342528620571,
+            "max_q": 0.08744229893890448
+        },
+        "Sideways_Config": {
+            "hurst_lookback": 925,
+            "initial_r": 741.1642616793424,
+            "min_q": 0.027028325900303966,
+            "max_q": 0.05068306421464415
+        },
+        "Protection_Config": {
+            "initial_r": 500.0,
+            "min_q": 0.001,
+            "max_q": 0.01
+        }
     },
     "XAUAUD": {
         "hurst_lookback": 876,
@@ -336,18 +354,54 @@
         "max_q": 0.0880818367360138
     },
     "EURUSD": {
-        "hurst_lookback": 860,
-        "mmi_lookback": 153,
-        "initial_r": 437.11289660757143,
-        "min_q": 0.03164676030130286,
-        "max_q": 0.1602622944710555
+        "hurst_lookback": 992,
+        "mmi_lookback": 200,
+        "threshold_trend": 0.55,
+        "threshold_range_min": 0.4,
+        "hard_dollar_stop": 50.0,
+        "last_calibrated": "2026-03-13T20:27:08.432466",
+        "Trend_Config": {
+            "hurst_lookback": 992,
+            "initial_r": 101.22307584169398,
+            "min_q": 0.0014053389886226582,
+            "max_q": 0.2900597053937025
+        },
+        "Sideways_Config": {
+            "hurst_lookback": 369,
+            "initial_r": 229.80486998603436,
+            "min_q": 0.011052891484020952,
+            "max_q": 0.3213087633787908
+        },
+        "Protection_Config": {
+            "initial_r": 500.0,
+            "min_q": 0.001,
+            "max_q": 0.01
+        }
     },
     "GBPUSD": {
-        "hurst_lookback": 1499,
-        "mmi_lookback": 226,
-        "initial_r": 474.7497672247732,
-        "min_q": 0.033851092714916875,
-        "max_q": 0.06284138784166379
+        "hurst_lookback": 531,
+        "mmi_lookback": 200,
+        "threshold_trend": 0.55,
+        "threshold_range_min": 0.4,
+        "hard_dollar_stop": 50.0,
+        "last_calibrated": "2026-03-13T20:27:27.453025",
+        "Trend_Config": {
+            "hurst_lookback": 531,
+            "initial_r": 255.86026323479697,
+            "min_q": 0.015456847600355015,
+            "max_q": 0.3690370146704604
+        },
+        "Sideways_Config": {
+            "hurst_lookback": 720,
+            "initial_r": 780.1121491570897,
+            "min_q": 0.0254025475484507,
+            "max_q": 0.3245226273056171
+        },
+        "Protection_Config": {
+            "initial_r": 500.0,
+            "min_q": 0.001,
+            "max_q": 0.01
+        }
     },
     "USDCHF": {
         "hurst_lookback": 1301,

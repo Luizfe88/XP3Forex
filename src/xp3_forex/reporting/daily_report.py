@@ -44,6 +44,64 @@ class DailyReportGenerator:
                 
                 lines.append(f"| **{symbol}** | {sess_name} | {ema_f} | {ema_s} | {rsi_b} | {rsi_s} | {adx} |")
         
+        # --- NEW: Quantitative Regime Calibration Section ---
+        quant_json = settings.DATA_DIR / "quant_optimized_params.json"
+        if quant_json.exists():
+            try:
+                import json
+                with open(quant_json, "r", encoding="utf-8") as f:
+                    quant_data = json.load(f)
+                
+                if quant_data:
+                    lines.append("")
+                    lines.append("## 🛡️ Calibração de Regimes (Core Quant)")
+                    lines.append("")
+                    lines.append("Configurações otimizadas para detecção de Hurst e Filtro de Kalman Adaptativo.")
+                    lines.append("")
+                    lines.append("| Ativo | Regime | Hurst L.back | Initial R | Min Q | Max Q |")
+                    lines.append("| :--- | :--- | :---: | :---: | :---: | :---: |")
+                    
+                    for symbol in sorted(quant_data.keys()):
+                        data = quant_data[symbol]
+                        
+                        regime_configs = [
+                            ("Trend", "Trend_Config"),
+                            ("Sideways", "Sideways_Config"),
+                            ("Protection", "Protection_Config")
+                        ]
+                        
+                        found_regime = False
+                        for label, key in regime_configs:
+                            config = data.get(key)
+                            if config:
+                                found_regime = True
+                                h_lookback = config.get("hurst_lookback", data.get("hurst_lookback", "-"))
+                                init_r = config.get("initial_r", "-")
+                                min_q = config.get("min_q", "-")
+                                max_q = config.get("max_q", "-")
+                                
+                                # Formatting
+                                if isinstance(init_r, (int, float)): init_r = f"{init_r:.1f}"
+                                if isinstance(min_q, (int, float)): min_q = f"{min_q:.4f}"
+                                if isinstance(max_q, (int, float)): max_q = f"{max_q:.4f}"
+                                
+                                lines.append(f"| **{symbol}** | {label.upper()} | {h_lookback} | {init_r} | {min_q} | {max_q} |")
+                        
+                        # Fallback for flat structure
+                        if not found_regime and "initial_r" in data:
+                            h_lookback = data.get("hurst_lookback", "-")
+                            init_r = data.get("initial_r", "-")
+                            min_q = data.get("min_q", "-")
+                            max_q = data.get("max_q", "-")
+                            
+                            if isinstance(init_r, (int, float)): init_r = f"{init_r:.1f}"
+                            if isinstance(min_q, (int, float)): min_q = f"{min_q:.4f}"
+                            if isinstance(max_q, (int, float)): max_q = f"{max_q:.4f}"
+                            
+                            lines.append(f"| **{symbol}** | GENERAL | {h_lookback} | {init_r} | {min_q} | {max_q} |")
+            except Exception as e:
+                logger.error(f"Erro ao incluir dados quantitativos no relatório: {e}")
+        
         lines.append("")
         lines.append("## 💡 Lições do Dia")
         

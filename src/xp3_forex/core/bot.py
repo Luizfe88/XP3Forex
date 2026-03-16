@@ -11,7 +11,7 @@ import signal
 import traceback
 import queue
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from threading import Lock, RLock, Event
 from collections import deque, defaultdict
 from dataclasses import dataclass, field
@@ -57,7 +57,7 @@ from .rate_cache import RateCache
 from ..strategies.adaptive_ema_rsi import AdaptiveEmaRsiStrategy
 from ..optimization.learner import DailyLearner
 from ..reporting.daily_report import DailyReportGenerator
-from ..utils.telegram_utils import send_telegram_message, send_telegram_document
+from ..utils.telegram_utils import send_telegram_message, send_telegram_document, TelegramControl
 from ..utils.process_watcher import ProcessWatcher
 
 logger = logging.getLogger("XP3_BOT")
@@ -116,8 +116,14 @@ class XP3Bot:
         self.report_gen = DailyReportGenerator()
         self.last_summary_table_time = 0  # Timer para o relatório de 5 min
         
-        # Batching Logic (NEW)
+        # Telegram Control Listener
+        self.telegram_control = TelegramControl(self)
+        
         self.pending_signals: List[TradeSignal] = []
+        
+        # Dynamic Symbol Refresh
+        self._last_symbol_refresh = 0
+        self.update_symbols_dynamic()
         
         logger.info(f"🚀 XP3 PRO FOREX BOT v5.0 INSTITUCIONAL Inicializado")
         logger.info(f"Symbols: {self.symbols}")
@@ -216,8 +222,6 @@ class XP3Bot:
         except Exception as e:
             logger.error(f"Erro ao inicializar MT5: {e}")
             return False
-    
-            return None
 
     def is_in_rollover_pause(self) -> bool:
         """
@@ -263,11 +267,27 @@ class XP3Bot:
                     if not getattr(self, '_friday_close_notified_today', False):
                         send_telegram_message("🛑 *Friday Close Guard Ativado*\nFechando todas as posições abertas para não zerar a conta com gaps de segunda-feira.")
                         self._friday_close_notified_today = True
-                        
+                    
                     self.close_all_positions()
             else:
                 self._friday_close_notified_today = False
     
+    def update_symbols_dynamic(self):
+        """Atualiza a lista de símbolos a partir do SymbolManager (Market Watch)"""
+        now = time.time()
+        # Refresh a cada 5 minutos
+        if now - self._last_symbol_refresh > 300 or not self.symbols:
+            new_symbols = self.symbol_manager.get_tradable_symbols(ignore_spread=True)
+            if new_symbols and set(new_symbols) != set(self.symbols):
+                logger.info(f"🔄 Lista de símbolos atualizada ({len(new_symbols)} ativos): {new_symbols[:5]}...")
+                self.symbols = new_symbols
+                # Atualiza também nos componentes dependentes
+                if hasattr(self, 'data_feeder'):
+                    self.data_feeder.symbols = self.symbols
+                if hasattr(self, 'learner'):
+                    self.learner.symbols = self.symbols
+            self._last_symbol_refresh = now
+
     def analyze_symbol(self, symbol: str, timeframe: int, df: pd.DataFrame) -> Optional[TradeSignal]:
         """Analyze a symbol and generate trading signal using provided DataFrame"""
         try:
@@ -358,7 +378,8 @@ class XP3Bot:
                     magic_number=settings.MAGIC_NUMBER,
                     initial_sl_dist=initial_sl_dist,
                     partial_taken=False,
-                    ticket=ticket
+                    ticket=ticket,
+                    regime=signal.regime
                 )
                 
                 self.positions[signal.symbol] = position
@@ -480,7 +501,8 @@ class XP3Bot:
                             magic_number=p.magic,
                             initial_sl_dist=sl_dist,
                             partial_taken=False,
-                            ticket=p.ticket
+                            ticket=p.ticket,
+                            regime=MarketRegime.SIDEWAYS # Unknown sync, default to conservative
                         )
 
                 # 2. Processar Lógica de Gerenciamento (Virtual SL/TP/Trailing)
@@ -513,15 +535,18 @@ class XP3Bot:
                             self.pending_signals = [s for s in self.pending_signals if s.symbol != symbol]
                             continue
 
-                    # A.1 Profit Trailing Shield (High-Water Mark)
+                    # A.1 Profit Trailing Shield (High-Water Mark - Dynamic by Regime)
+                    # TREND: 25% giveback | SIDEWAYS: 10% giveback
+                    trailing_pct = 0.25 if position.regime == "TREND" else 0.10
+                    
                     if position.max_floating_profit > settings.PROFIT_ACTIVATION_THRESHOLD:
-                        trailing_stop_profit = position.max_floating_profit * (1 - settings.PROFIT_TRAILING_PERCENT)
+                        trailing_stop_profit = position.max_floating_profit * (1 - trailing_pct)
                         if position.profit <= trailing_stop_profit:
-                            logger.warning(f"🛡️ [DYNAMIC EXIT] Profit Trailing Shield triggered for {symbol} (Ticket: {position.ticket}). Max Profit was ${position.max_floating_profit:.2f}, closed at ${position.profit:.2f}")
+                            logger.warning(f"🛡️ [DYNAMIC EXIT] {position.regime} Trailing Shield triggered for {symbol}. Max Profit: ${position.max_floating_profit:.2f}, Closed at ${position.profit:.2f} ({trailing_pct*100}% giveback)")
                             if trade_executor.close_position(position.ticket, symbol, ignore_cooldown=True):
                                 closed_positions.append(symbol)
                                 self._update_stats_after_close(position)
-                                send_telegram_message(f"🛡️ *PROFIT TRAILING SHIELD EXECUTADO*\nAtivo: `{symbol}`\nMax Profit: `${position.max_floating_profit:.2f}`\nFechado em: `${position.profit:.2f}`")
+                                send_telegram_message(f"🛡️ *{position.regime} TRAILING SHIELD*\nAtivo: `{symbol}`\nMax Profit: `${position.max_floating_profit:.2f}`\nFechado em: `${position.profit:.2f}`")
                                 self.pending_signals = [s for s in self.pending_signals if s.symbol != symbol]
                                 continue
                     
@@ -550,8 +575,13 @@ class XP3Bot:
 
                     # B. Proactive Break-Even (BE) Management
                     
-                    # Dollar-based Auto Break-Even (Risco Zero)
-                    if position.profit >= settings.BREAK_EVEN_TRIGGER:
+                    # Dollar-based Auto Break-Even (Risco Zero - Dynamic by Regime)
+                    # SIDEWAYS: Aciona com 50% do trigger padrão (mais rápido)
+                    be_trigger = settings.BREAK_EVEN_TRIGGER
+                    if position.regime == "SIDEWAYS":
+                        be_trigger *= 0.5
+                        
+                    if position.profit >= be_trigger:
                         tick = mt5.symbol_info_tick(symbol)
                         if tick:
                             spread_val = tick.ask - tick.bid
@@ -559,12 +589,12 @@ class XP3Bot:
                             
                             if position.order_type == "BUY" and position.stop_loss < be_price:
                                 position.stop_loss = be_price
-                                logger.info(f"🛡️ [RISK-FREE] Profit reached Break-Even Trigger (${settings.BREAK_EVEN_TRIGGER}). Virtual SL moved to Entry Price + Spread ({be_price:.5f}) for {symbol}.")
-                                send_telegram_message(f"🛡️ *RISK-FREE ATIVADO*\nAtivo: `{symbol}`\nLucro Flutuante: `${position.profit:.2f}`\nVirtual SL movido para: `{be_price:.5f}`")
+                                logger.info(f"🛡️ [RISK-FREE {position.regime}] Profit reached BE Trigger (${be_trigger:.2f}). Virtual SL moved to {be_price:.5f}")
+                                send_telegram_message(f"🛡️ *RISK-FREE {position.regime}*\nAtivo: `{symbol}`\nTrigger: `${be_trigger:.2f}`\nVirtual SL: `{be_price:.5f}`")
                             elif position.order_type == "SELL" and position.stop_loss > be_price:
                                 position.stop_loss = be_price
-                                logger.info(f"🛡️ [RISK-FREE] Profit reached Break-Even Trigger (${settings.BREAK_EVEN_TRIGGER}). Virtual SL moved to Entry Price - Spread ({be_price:.5f}) for {symbol}.")
-                                send_telegram_message(f"🛡️ *RISK-FREE ATIVADO*\nAtivo: `{symbol}`\nLucro Flutuante: `${position.profit:.2f}`\nVirtual SL movido para: `{be_price:.5f}`")
+                                logger.info(f"🛡️ [RISK-FREE {position.regime}] Profit reached BE Trigger (${be_trigger:.2f}). Virtual SL moved to {be_price:.5f}")
+                                send_telegram_message(f"🛡️ *RISK-FREE {position.regime}*\nAtivo: `{symbol}`\nTrigger: `${be_trigger:.2f}`\nVirtual SL: `{be_price:.5f}`")
 
                     # Determine Pips or R
                     point = self.symbol_manager.get_point(symbol)
@@ -674,7 +704,8 @@ class XP3Bot:
                         magic_number=t['magic_number'],
                         initial_sl_dist=abs(t['entry_price'] - t['stop_loss']) if t['stop_loss'] and t['stop_loss'] > 0 else 0,
                         partial_taken=False,
-                        ticket=ticket
+                        ticket=ticket,
+                        regime=t.get('regime', 'SIDEWAYS')
                     )
                     logger.debug(f"✅ Memória de SL/TP Virtual restaurada para {symbol} (Ticket: {ticket})")
         except Exception as e:
@@ -682,12 +713,21 @@ class XP3Bot:
 
     def display_summary_table(self):
         """Exibe uma tabela formatada com as posições abertas no console"""
+        # Obter data da última atualização do cérebro (arquivos de parâmetros)
+        params_path = settings.DATA_DIR / "session_optimized_params.json"
+        last_update_str = "N/A"
+        if params_path.exists():
+            try:
+                mtime = params_path.stat().st_mtime
+                last_update_str = datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %H:%M:%S')
+            except: pass
+
         if not HAS_RICH or not self.console:
             # Fallback simples se Rich não estiver disponível
             if not self.positions:
-                print("\n[INFO] Nenhuma posição aberta no momento.")
+                print(f"\n[INFO] Nenhuma posição aberta no momento. (Último Aprendizado: {last_update_str})")
                 return
-            print("\n--- POSIÇÕES ABERTAS ---")
+            print(f"\n--- POSIÇÕES ABERTAS (Último Aprendizado: {last_update_str}) ---")
             for s, p in self.positions.items():
                 print(f"{s}: {p.order_type} | Vol: {p.volume:.2f} | Entry: {p.entry_price:.5f} | Profit: ${p.profit:.2f}")
             return
@@ -696,10 +736,13 @@ class XP3Bot:
         from rich.panel import Panel
 
         if not self.positions:
-            self.console.print(Panel("[yellow]Nenhuma posição aberta no momento.[/]", title="XP3 STATUS", expand=False))
+            self.console.print(Panel(f"[yellow]Nenhuma posição aberta no momento.[/]\n[dim]Cérebro atualizado em: {last_update_str}[/]", title="XP3 STATUS", expand=False))
             return
 
-        table = Table(title=f"XP3 PRO FOREX - POSIÇÕES ATIVAS ({datetime.now().strftime('%H:%M:%S')})", header_style="bold magenta")
+        table = Table(
+            title=f"XP3 PRO FOREX - POSIÇÕES ATIVAS ({datetime.now().strftime('%H:%M:%S')})\n[dim]Último Aprendizado: {last_update_str}[/]", 
+            header_style="bold magenta"
+        )
         
         table.add_column("Símbolo", style="cyan", justify="left")
         table.add_column("Tipo", style="bold")
@@ -708,6 +751,7 @@ class XP3Bot:
         table.add_column("Atual", justify="right")
         table.add_column("SL (Virtual)", style="red", justify="right")
         table.add_column("TP (Virtual)", style="green", justify="right")
+        table.add_column("Regime", style="yellow")
         table.add_column("P&L ($)", justify="right", style="bold")
 
         total_profit = 0
@@ -723,6 +767,7 @@ class XP3Bot:
                 f"{p.current_price:.5f}",
                 f"{p.stop_loss:.5f}" if p.stop_loss > 0 else "-",
                 f"{p.take_profit:.5f}" if p.take_profit > 0 else "-",
+                str(p.regime),
                 f"[{profit_style}]${p.profit:.2f}[/]"
             )
             total_profit += p.profit
@@ -764,7 +809,10 @@ class XP3Bot:
         
         while not SHUTDOWN_EVENT.is_set():
             try:
-                # Update positions
+                # 0. Refresh Symbols from Market Watch
+                self.update_symbols_dynamic()
+
+                # 1. Update existing positions
                 self.update_positions()
 
                 # --- Periodic Positions Report (5 min) ---
@@ -847,6 +895,12 @@ class XP3Bot:
                     if symbol == "CYCLE_COMPLETE":
                         self.process_batch_signals()
                     else:
+                        # --- NOVO: Atualiza o estado da estratégia (Regimes, etc) ---
+                        try:
+                            self.strategy.on_bar(symbol, timeframe, df)
+                        except Exception as e:
+                            logger.error(f"Erro em strategy.on_bar para {symbol}: {e}")
+                            
                         # Analyze
                         signal = self.analyze_symbol(symbol, timeframe, df)
                         if signal:
@@ -861,9 +915,9 @@ class XP3Bot:
                 except queue.Empty:
                     pass
                     
-                # --- Daily Maintenance (23:55 UTC) ---
-                now_utc = datetime.utcnow()
-                if now_utc.hour == 23 and now_utc.minute >= 55:
+                # --- Daily Maintenance (19:00 BRT / 22:00 UTC) ---
+                now_utc = datetime.now(UTC)
+                if now_utc.hour == 22 and now_utc.minute >= 0:
                     if self._last_maintenance_date != now_utc.date():
                         self.run_daily_maintenance()
                         self._last_maintenance_date = now_utc.date()
@@ -945,10 +999,14 @@ class XP3Bot:
         
         # Update bot symbols list
         self.symbols = valid_symbols
-        
-        # Also update DataFeeder if it was already initialized with old list
+
+        # Update components with the resolved symbols list
         if hasattr(self, 'data_feeder'):
             self.data_feeder.symbols = self.symbols
+        
+        if hasattr(self, 'learner'):
+            self.learner.symbols = self.symbols
+            logger.info(f"🎓 Learner sincronizado com {len(self.symbols)} ativos.")
         
         return valid_symbols
 
@@ -996,12 +1054,21 @@ class XP3Bot:
             self.is_connected = True
             self.is_trading_active = True
             
+            # Start Strategy (Initialize regimes and baseline)
+            try:
+                self.strategy.startup()
+            except Exception as e:
+                logger.error(f"Erro ao iniciar estratégia: {e}")
+            
             # Start Threads
             self.health_monitor.start()
             
             # Start Feeder Thread
             feeder_thread = threading.Thread(target=self.data_feeder.run, daemon=True)
             feeder_thread.start()
+            
+            # Start Telegram Control
+            self.telegram_control.start()
             
             # Start Consumer Loop (Main Thread or Separate)
             # If running as daemon or service, this might block.

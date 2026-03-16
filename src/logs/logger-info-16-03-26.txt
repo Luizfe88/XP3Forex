@@ -1,0 +1,104 @@
+2026-03-16 08:02:14,077 | WARNING  | xp3_forex.mt5.symbol_manager | No symbols found in Market Watch (symbols_get returned None)
+2026-03-16 08:02:14,077 | INFO     | XP3_BOT      | 🚀 XP3 PRO FOREX BOT v5.0 INSTITUCIONAL Inicializado
+2026-03-16 08:02:14,078 | INFO     | XP3_BOT      | Symbols: ['ALL']
+2026-03-16 08:02:14,079 | INFO     | XP3_BOT      | 🚀 Iniciando XP3 PRO FOREX BOT
+2026-03-16 08:02:14,087 | INFO     | xp3_forex.utils.mt5_utils | ✅ MT5 inicializado. Conta: 52659795 | Servidor: ICMarketsSC-Demo
+2026-03-16 08:02:14,089 | INFO     | XP3_BOT      | ✅ MT5 Conectado e Algo Trading habilitado. Conta: 52659795
+2026-03-16 08:02:14,097 | INFO     | XP3_BOT      | 🔄 Inicializando Filtro de Símbolos Institucional...
+2026-03-16 08:02:14,168 | INFO     | xp3_forex.mt5.symbol_manager | Market Watch scan: 36 symbols found.
+2026-03-16 08:02:14,176 | INFO     | xp3_forex.utils.mt5_utils | ✅ MT5 Worker Thread inicializado com sucesso.
+2026-03-16 08:02:14,210 | INFO     | xp3_forex.mt5.symbol_manager | 🚫 Spread alto para USDTHB (exotic): 610 > 500. Ignorando (Log diário).
+2026-03-16 08:02:14,211 | WARNING  | xp3_forex.mt5.symbol_manager | ⚠️ Ativo USDTRY temporariamente ignorado: Modo de negociação restrito pela corretora: CLOSE-ONLY (Apenas Fechamento)
+2026-03-16 08:02:14,214 | INFO     | xp3_forex.mt5.symbol_manager | 🚫 Spread alto para USDZAR (exotic): 636 > 500. Ignorando (Log diário).
+2026-03-16 08:02:14,222 | INFO     | xp3_forex.mt5.symbol_manager | 🚫 Spread Filter Summary: Ignored 2 symbols due to high spread (Ex: ['USDZAR', 'USDTHB']...)
+2026-03-16 08:02:14,222 | INFO     | XP3_BOT      | ✅ Filtro concluído: 35 símbolos aprovados para trading.
+2026-03-16 08:02:14,223 | INFO     | XP3_BOT      | 🎓 Learner sincronizado com 35 ativos.
+2026-03-16 08:02:14,224 | INFO     | xp3_forex.core.health_monitor | Health Monitor iniciado
+2026-03-16 08:02:14,226 | INFO     | xp3_forex.core.data_feeder | Data Feeder iniciado
+2026-03-16 08:02:14,231 | INFO     | XP3.Telegram | 📱 Telegram Control Listener iniciado.
+2026-03-16 08:02:14,307 | INFO     | XP3_BOT      | 🔥 Consumer Loop iniciado
+2026-03-16 08:02:14,423 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:14,733 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:14,811 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:14,891 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:14,937 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:14,968 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:15,045 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:15,071 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:15,100 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:15,128 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:15,178 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:29,456 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:30,484 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:31,508 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:32,562 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:33,573 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:34,589 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:35,622 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:36,651 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:37,676 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:38,700 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:39,718 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:40,751 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:41,785 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:42,813 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:43,836 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:44,866 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:45,920 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:46,964 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:47,981 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:49,001 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:50,037 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:51,059 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:52,078 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:53,131 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:54,163 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:55,176 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:56,190 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:57,208 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:58,222 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:02:59,236 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:00,254 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:01,291 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:02,322 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:03,342 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:04,359 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:05,383 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:06,405 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:07,442 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:08,479 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:09,510 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:10,529 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:11,558 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:12,577 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:13,596 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:14,645 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:14,676 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:14,691 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:14,708 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:14,724 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:14,744 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:14,762 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:14,779 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:14,799 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:14,825 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:14,853 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:15,870 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:16,884 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:17,897 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:18,919 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:19,941 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:21,007 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:22,052 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:23,137 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:24,168 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:25,192 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:26,216 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:27,243 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:28,273 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:29,303 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:30,328 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:31,358 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:32,376 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:33,423 | WARNING  | XP3.SessionAnalyzer | Arquivo de parâmetros de sessão não encontrado em data\session_optimized_params.json. Usando padrões.
+2026-03-16 08:03:33,812 | WARNING  | XP3_CLI      | Bot instance does not have a stop method.

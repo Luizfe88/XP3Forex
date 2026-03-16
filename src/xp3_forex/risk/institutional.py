@@ -119,7 +119,7 @@ def calculate_fractional_kelly(
                     reduction = 1.0 - (avg_corr - 0.7) / 0.3 * 0.5 
                     base_f *= max(0.5, reduction)
         
-    return max(0.001, base_f) # Min 0.1% to allow small trades
+    return max(0.0, base_f) # Allow truly small fractions, but never negative
 
 class InstitutionalRiskManager:
     def __init__(self, config: RiskConfig = RiskConfig()):

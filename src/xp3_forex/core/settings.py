@@ -6,22 +6,26 @@
 """
 
 import os
+import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Union
 from pydantic import Field, computed_field, BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # ===========================
-# CONSTANTES COMPLEXAS / ESTÁTICAS
+# 0. MODEL DEFINITIONS & CONSTANTS
 # ===========================
-# Tokens de Classes de Ativos
-TOKENS_CRYPTO = ["BTC", "ETH", "SOL", "ADA", "BNB", "XRP", "LTC", "DOGE"]
-TOKENS_INDICES = ["US30", "NAS100", "USTEC", "DE40", "GER40", "GER30", "UK100", "US500", "USA500", "SPX500", "HK50", "JP225", "FRA40"]
-TOKENS_METALS = ["XAU", "XAG", "GOLD", "SILVER"]
-TOKENS_EXOTICS = ["TRY", "ZAR", "MXN", "RUB", "CNH", "PLN", "HUF", "CZK", "DKK", "NOK", "SEK"]
+
+class SessionMetricsConfig(BaseModel):
+    """Configuração de métricas alvo por sessão"""
+    name: str
+    start_time_utc: str  # Format "HH:MM"
+    end_time_utc: str    # Format "HH:MM"
+    min_profit_factor: float
+    min_win_rate: float
+    description: str
 
 # Elite Config (Parâmetros Otimizados por Ativo)
-# Pode ser movido para um arquivo JSON/YAML externo no futuro
 ELITE_CONFIG = {
     "EURUSD": {
         "adx_threshold": 25,
@@ -57,14 +61,9 @@ SYMBOL_MAP = {
     "USDCAD": {"type": "major", "volatility": "medium", "spread": "medium"}
 }
 
-class SessionMetricsConfig(BaseModel):
-    """Configuração de métricas alvo por sessão"""
-    name: str
-    start_time_utc: str  # Format "HH:MM"
-    end_time_utc: str    # Format "HH:MM"
-    min_profit_factor: float
-    min_win_rate: float
-    description: str
+# ===========================
+# 1. CORE SETTINGS CLASS
+# ===========================
 
 class Settings(BaseSettings):
     """
@@ -77,6 +76,14 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False
     )
+
+    # ===========================
+    # 0. ASSET CLASS TOKENS
+    # ===========================
+    TOKENS_CRYPTO: List[str] = ["BTC", "ETH", "SOL", "ADA", "BNB", "XRP", "LTC", "DOGE"]
+    TOKENS_INDICES: List[str] = ["US30", "NAS100", "USTEC", "DE40", "GER40", "GER30", "UK100", "US500", "USA500", "SPX500", "HK50", "JP225", "FRA40"]
+    TOKENS_METALS: List[str] = ["XAU", "XAG", "GOLD", "SILVER"]
+    TOKENS_EXOTICS: List[str] = ["TRY", "ZAR", "MXN", "RUB", "CNH", "PLN", "HUF", "CZK", "DKK", "NOK", "SEK", "THB", "BRL"]
 
     # ===========================
     # 1. META TRADER 5 CONFIG
@@ -191,9 +198,22 @@ class Settings(BaseSettings):
     XP3_ENV: str = Field(default="Production", description="Ambiente (Production, Development)")
     DEBUG_MODE: bool = Field(default=False, description="Ativar logs detalhados (Why Report) para todos os estados")
     LOG_LEVEL: str = Field(default="INFO", description="Nível de log (DEBUG, INFO, WARNING, ERROR)")
-    LOGS_DIR: Path = Field(default=Path("logs"), description="Diretório de logs")
-    DATA_DIR: Path = Field(default=Path("data"), description="Diretório de dados")
-    OPTIMIZER_OUTPUT_DIR: Path = Field(default=Path("optimizer_output"), description="Diretório de saída do otimizador")
+    
+    @property
+    def project_root(self) -> Path:
+        return Path(__file__).parent.parent.parent.parent
+
+    @computed_field
+    def LOGS_DIR(self) -> Path:
+        return self.project_root / "logs"
+
+    @computed_field
+    def DATA_DIR(self) -> Path:
+        return self.project_root / "data"
+
+    @computed_field
+    def OPTIMIZER_OUTPUT_DIR(self) -> Path:
+        return self.project_root / "optimizer_output"
     
     # ===========================
     # 7. TELEGRAM NOTIFICATIONS
@@ -244,7 +264,6 @@ class Settings(BaseSettings):
         Loads optimized quantitative parameters for a specific symbol.
         Returns default values if not found.
         """
-        import json
         path = self.DATA_DIR / "quant_optimized_params.json"
         
         # Default fallback values

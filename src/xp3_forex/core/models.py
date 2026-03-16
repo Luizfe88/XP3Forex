@@ -13,6 +13,7 @@ class TradeSignal:
     volume: float
     confidence: float
     reason: str
+    regime: str = "UNKNOWN"
     timestamp: datetime = field(default_factory=datetime.now)
 
 @dataclass
@@ -33,3 +34,4 @@ class Position:
     partial_taken: bool = False
     initial_sl_dist: float = 0.0
     max_floating_profit: float = 0.0
+    regime: str = "UNKNOWN"

@@ -113,8 +113,9 @@ class SymbolManager:
     def _is_safe_category(self, symbol: str) -> bool:
         """Verifica se a categoria é segura para trading automático"""
         category = self._categorize_symbol(symbol)
-        # Permite Majors, Metals e Indices principais. Bloqueia Exotics e Crypto por padrão se vier de ALL.
-        return category in ["major", "metal", "index"]
+        # Permite todas as categorias institucionais se o usuário solicitou escaneamento total.
+        # O filtro real de segurança será o Spread e o Trade Mode.
+        return category in ["major", "metal", "index", "exotic", "crypto"]
 
     def check_spread(self, symbol: str) -> bool:
         """
@@ -217,36 +218,39 @@ class SymbolManager:
         return True
 
     def _categorize_symbol(self, symbol: str) -> str:
-        """Categoriza o símbolo automaticamente"""
+        """Categoriza o símbolo automaticamente usando configurações institucionais"""
         s = symbol.upper()
         
-        # Crypto
-        if "BTC" in s or "ETH" in s or "XRP" in s or "CRYPTO" in s:
+        # 1. Crypto (Priority)
+        if any(token in s for token in settings.TOKENS_CRYPTO):
             return "crypto"
             
-        # Indices (common patterns)
-        if any(x in s for x in ["US30", "NAS100", "SPX", "GER40", "UK100", "JP225", "BRA50"]):
-            return "index"
-            
-        # Metals
-        if "XAU" in s or "XAG" in s or "GOLD" in s or "SILVER" in s:
+        # 2. Metals
+        if any(token in s for token in settings.TOKENS_METALS):
             return "metal"
             
-        # Forex
-        # Majors: USD + (EUR, GBP, JPY, CHF, CAD, AUD, NZD)
+        # 3. Indices
+        if any(token in s for token in settings.TOKENS_INDICES):
+            return "index"
+            
+        # 4. Exotics (Check BEFORE Majors to avoid overlapping like USDTHB)
+        if any(token in s for token in settings.TOKENS_EXOTICS):
+            return "exotic"
+            
+        # 5. Forex Majors/Minors
+        # Check standard 6-char pairs (EURUSD, GBPJPY, etc.)
         majors_base = ["EUR", "GBP", "AUD", "NZD", "USD"]
         majors_quote = ["USD", "JPY", "CHF", "CAD"]
         
-        # Remove sufixos para check
-        clean_symbol = s[:6] # Assume 6 chars standard forex
+        # Símbolo limpo (remove sufixos)
+        clean_symbol = s[:6]
         
+        # Só é major se tiver base major AND quote major
+        # E se não tiver sido pego pela lista de exóticos acima
         if any(m in clean_symbol for m in majors_base) and any(q in clean_symbol for q in majors_quote):
-            # Check for exotics chars
-            if any(x in s for x in ["TRY", "ZAR", "MXN", "RUB", "CNH", "PLN", "HUF", "CZK", "DKK", "NOK", "SEK"]):
-                return "exotic"
             return "major"
             
-        return "exotic" # Fallback
+        return "exotic" # Fallback perigoso mas filtrado pelo spread alto
 
     def _get_max_spread_for_category(self, category: str) -> int:
         if category == "major": return settings.MAX_SPREAD_MAJORS

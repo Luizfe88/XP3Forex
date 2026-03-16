@@ -31,10 +31,26 @@ def get_pip_size(symbol: str) -> float:
 
 
 def get_tick_value(symbol: str, lot_size: float = 1.0) -> float:
-    """Obtém o valor do tick para o símbolo"""
+    """
+    Obtém o valor do tick para o símbolo de forma inteligente.
+    Prioriza ELITE_CONFIG, depois tenta inferir pelo tipo de ativo.
+    """
     try:
-        if symbol in ELITE_CONFIG:
-            return lot_size * ELITE_CONFIG[symbol].get("tick_value", 1.0)
+        if symbol in ELITE_CONFIG and "tick_value" in ELITE_CONFIG[symbol]:
+            return lot_size * ELITE_CONFIG[symbol]["tick_value"]
+            
+        # Fallback Inteligente baseado na categoria
+        from ..mt5.symbol_manager import symbol_manager
+        category = symbol_manager._categorize_symbol(symbol)
+        
+        s = symbol.upper()
+        # Valores padrão de Tick Value para 1.0 lote em muitas corretoras (USD Account)
+        if category == "metal":
+            if "XAU" in s or "GOLD" in s:
+                return 1.0  # 1 tick (0.01) = $1.00 para 100oz
+            elif "XAG" in s or "SILVER" in s:
+                return 5.0  # 1 tick (0.001) = $5.00 para 5000oz (Icy/Pepperstone etc)
+        
         return lot_size
     except:
         return lot_size

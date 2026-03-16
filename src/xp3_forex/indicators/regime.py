@@ -7,14 +7,14 @@ import numpy as np
 import pandas as pd
 from numba import njit
 from pydantic import BaseModel, Field
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Any
 
 class RegimeConfig(BaseModel):
-    """Hyperparameters for Regime Detection"""
+    """Hyperparameters for Regime Detection v5.1"""
     hurst_lookback: int = Field(default=500, ge=100, le=2000)
     mmi_lookback: int = Field(default=200, ge=50, le=500)
-    trend_threshold: float = Field(default=0.65, description="Hurst > trend_threshold => Trending")
-    mean_reversion_threshold: float = Field(default=0.45, description="Hurst < mean_reversion_threshold => Mean Reverting")
+    threshold_trend: float = Field(default=0.55, description="Hurst > 0.55 => TREND")
+    threshold_range_min: float = Field(default=0.40, description="Hurst [0.40, 0.54] => SIDEWAYS")
 
 @njit
 def _hurst_rs_values(returns: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
@@ -56,7 +56,12 @@ def calculate_hurst_rs(series: np.ndarray) -> float:
     if len(series) < 100:
         return 0.5
     
-    returns = np.diff(np.log(series))
+    # Avoid log(0) issues
+    if np.any(series <= 0):
+        returns = np.diff(series)
+    else:
+        returns = np.diff(np.log(series))
+    
     rs_values, n_values = _hurst_rs_values(returns)
     
     if len(rs_values) < 2:
@@ -86,22 +91,32 @@ def calculate_mmi_numba(series: np.ndarray) -> float:
             
     return 100.0 * (1.0 - (m / (n - 1)))
 
-def get_market_regime(data: pd.Series, config: RegimeConfig) -> Dict[str, float]:
+def get_market_regime(data: pd.Series, config: RegimeConfig, kalman_slope: float = 0.0) -> Dict[str, Any]:
     """
-    Helper to get all regime metrics.
+    XP3 PRO v5.1 - Engine de Classificação de Regimes.
+    Classifica em TREND, SIDEWAYS ou PROTECTION.
     """
     vals = data.values
     hurst = calculate_hurst_rs(vals[-config.hurst_lookback:])
     mmi = calculate_mmi_numba(vals[-config.mmi_lookback:])
     
-    regime = "Random"
-    if hurst > config.trend_threshold:
-        regime = "Trend"
-    elif hurst < config.mean_reversion_threshold:
-        regime = "Mean Reversion"
+    # Lógica de Classificação XP3 PRO v5.1
+    if hurst > config.threshold_trend:
+        # Regime de Tendência (TREND): Hurst > 0.55
+        # Nota: A confirmação de direção pelo Kalman slope será checada na estratégia
+        regime = "TREND"
+    elif config.threshold_range_min <= hurst <= config.threshold_trend:
+        # Regime Lateral (SIDEWAYS): Hurst entre 0.40 e 0.55
+        regime = "SIDEWAYS"
+    else:
+        # Regime de Proteção (PROTECTION): Hurst < 0.40 (Ruído Puro)
+        regime = "PROTECTION"
         
     return {
         "hurst": hurst,
         "mmi": mmi,
-        "regime": regime
+        "regime": regime,
+        "is_trend": regime == "TREND",
+        "is_sideways": regime == "SIDEWAYS",
+        "is_protection": regime == "PROTECTION"
     }

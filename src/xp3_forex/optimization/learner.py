@@ -19,7 +19,7 @@ logger = logging.getLogger("XP3.Learner")
 class DailyLearner:
     def __init__(self, symbols: List[str]):
         self.symbols = symbols
-        self.history_days = 3 # Analisar os últimos 3 dias para aprender
+        self.history_days = 30 # Analisar os últimos 30 dias para aprender
         
     def run_full_learning(self):
         """Executa o ciclo de aprendizado para todos os símbolos ativos"""
@@ -34,8 +34,8 @@ class DailyLearner:
         for symbol in self.symbols:
             try:
                 # Pegar dados de H1 para otimização de sessão (mais estável)
-                # 24 barras por dia * 3 dias = 72 barras. Pegamos 200 para ter margem.
-                df = get_rates(symbol, 60, 200)
+                # 24 barras por dia * 30 dias = 720 barras. Pegamos 1000 para ter margem.
+                df = get_rates(symbol, 60, 1000)
                 if df is None or len(df) < 100:
                     logger.warning(f"Dados insuficientes para aprender com {symbol}")
                     continue
