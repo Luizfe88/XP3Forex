@@ -473,11 +473,11 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                     # --- IA Confidence Volume Scaling (Suavizado) ---
                     # Progressão mais justa para recompensar sinais fortes sem punir excessivamente o padrão
                     if confidence < 0.65:
-                        conf_factor = 0.25  # Cautela Extrema ( < 65%)
+                        conf_factor = 0.40  # Cautela Extrema ( < 65%) ajustado (era 0.25)
                     elif confidence < 0.75:
-                        conf_factor = 0.50  # Cautela Moderada (65-75%)
+                        conf_factor = 0.65  # Cautela Moderada (65-75%) ajustado (era 0.50)
                     elif confidence < 0.85:
-                        conf_factor = 0.80  # Padrão Institucional (75-85%)
+                        conf_factor = 0.90  # Padrão Institucional (75-85%) ajustado (era 0.80)
                     else:
                         conf_factor = 1.00  # Sniper Mode ( >= 85%)
                     

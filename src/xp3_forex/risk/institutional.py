@@ -7,11 +7,11 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 class RiskConfig(BaseModel):
     """Configuration for Risk Management"""
-    kelly_fraction: float = Field(default=0.25, description="Fractional Kelly (e.g., 0.25 for Quarter Kelly)")
+    kelly_fraction: float = Field(default=0.50, description="Fractional Kelly (e.g., 0.50 for Half Kelly)")
     confidence_level: float = Field(default=0.99, description="Confidence level for CVaR (99%)")
     max_portfolio_cvar_pct: float = Field(default=0.015, description="MPE: Max CVaR as % of portfolio (1.5%)")
     hurst_noise_range: Tuple[float, float] = Field(default=(0.45, 0.55), description="Hurst range considered random noise")

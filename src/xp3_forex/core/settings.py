@@ -161,10 +161,10 @@ class Settings(BaseSettings):
     MAX_SPREAD_METALS: int = Field(default=100, description="Max spread for Metals (points)")
     
     # Novos Mecanismos de Defesa (P&L Base)
-    PROFIT_ACTIVATION_THRESHOLD: float = Field(default=500.0, description="Lucro mínimo para ativar o Profit Trailing Shield ($)")
+    PROFIT_ACTIVATION_THRESHOLD: float = Field(default=250.0, description="Lucro mínimo para ativar o Profit Trailing Shield ($)")
     PROFIT_TRAILING_PERCENT: float = Field(default=0.25, description="Percentual de devolução permitido do lucro máximo (ex: 0.25 = 25%)")
     MAX_LOSS_DOLLARS: float = Field(default=-150.0, description="Perda financeira máxima permitida por posição ($)")
-    BREAK_EVEN_TRIGGER: float = Field(default=150.0, description="Lucro atingido para mover o SL ao Break-Even ($)")
+    BREAK_EVEN_TRIGGER: float = Field(default=80.0, description="Lucro atingido para mover o SL ao Break-Even ($)")
 
     MAX_WEEKLY_LOSS_PERCENT: float = Field(default=10.0, description="Perda máxima semanal (%)")
     MAX_MONTHLY_LOSS_PERCENT: float = Field(default=15.0, description="Perda máxima mensal (%)")
@@ -229,7 +229,7 @@ class Settings(BaseSettings):
     OPTIMIZATION_TIMEOUT: int = 3600
     OPTIMIZATION_N_JOBS: int = -1
     ML_MODEL_UPDATE_INTERVAL: int = 24
-    ML_PREDICTION_THRESHOLD: float = 0.65
+    ML_PREDICTION_THRESHOLD: float = 0.60
 
     @computed_field
     def symbols_list(self) -> List[str]:
