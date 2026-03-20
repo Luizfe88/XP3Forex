@@ -32,9 +32,19 @@ from .session_analyzer import get_active_session_name, get_active_session_params
 
 
 # Quantitative Layers (New)
-from ..indicators.regime import calculate_hurst_rs, calculate_mmi_numba, RegimeConfig
+from ..indicators.regime import calculate_hurst_rs, calculate_mmi_numba, RegimeConfig, get_market_regime
 from ..indicators.filters import KalmanFilter, KalmanConfig
 from ..risk.institutional import calculate_fractional_kelly, calculate_cf_cvar, RiskConfig
+
+try:
+    # Use real news filter from legacy
+    import sys
+    legacy_path = r"c:\Users\luizf\Documents\xp3forex\legacy"
+    if legacy_path not in sys.path:
+        sys.path.append(legacy_path)
+    from news_filter import news_filter
+except ImportError:
+    news_filter = None
 
 logger = logging.getLogger("XP3.Strategy.AR-EMA-RSI")
 
@@ -237,6 +247,12 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         rsi_sell_thresh = session_params.get("rsi_sell", regime.rsi_sell)
         adx_thresh = session_params.get("adx_threshold", 25)
         
+        # --- MINOR #8: ADX threshold for SIDEWAYS ---
+        if regime_name == MarketRegime.SIDEWAYS:
+            adx_max = 22 # Em congestionamento, ADX deve estar baixo (sem tendência)
+            if adx_thresh > adx_max:
+                adx_thresh = adx_max
+        
         # Recalculate specific EMAs for the current regime
         # Check if columns exist or recalc
         # To avoid recalc every time if not needed, we could cache, but df changes every call.
@@ -280,10 +296,16 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             adx = df['ADX_14'].iloc[-1]
             
             # ADX Filter from Session
-            if adx < adx_thresh:
-                logger.info(f"🚫 {symbol} REJECTED: ADX too low ({adx:.1f} < {adx_thresh})")
-                self.daily_stats["rejection_stats"]["adx_too_low"] += 1
-                return None
+            if regime_name == MarketRegime.TREND:
+                if adx < adx_thresh:
+                    logger.info(f"🚫 {symbol} TREND rejected: ADX too low ({adx:.1f} < {adx_thresh})")
+                    self.daily_stats["rejection_stats"]["adx_too_low"] += 1
+                    return None
+            elif regime_name == MarketRegime.SIDEWAYS:
+                if adx > adx_thresh:
+                    logger.info(f"🚫 {symbol} SIDEWAYS rejected: ADX too high ({adx:.1f} > {adx_thresh})")
+                    self.daily_stats["rejection_stats"]["adx_too_low"] += 1
+                    return None
                 
             # --- RSI Exhaustion Filter (CRITICAL) ---
             if rsi > self.RSI_BUY_MAX:
@@ -445,13 +467,14 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 # Adaptive ATR Multipliers by Regime
                 atr_mult_sl = session_params.get("atr_multiplier_sl", 2.0)
                 
-                # Dynamic TP based on Regime
-                if regime.name in ["strong_uptrend", "strong_downtrend"]:
-                    atr_mult_tp = 4.0 # Extended TP for strong trends
-                elif regime.name == "ranging":
-                    atr_mult_tp = 2.0 # Quicker TP for ranges
+                # --- MEDIUM #3: Dynamic TP based on Regime (Optuna + Floors) ---
+                optuna_tp = session_params.get("atr_multiplier_tp", 3.0) or 3.0
+                if regime_name == MarketRegime.TREND:
+                    atr_mult_tp = max(optuna_tp, 2.5)   # pelo menos 2.5 em tendência
+                elif regime_name == MarketRegime.SIDEWAYS:
+                    atr_mult_tp = min(optuna_tp, 2.5)   # cap em 2.5 para mean-reversion
                 else:
-                    atr_mult_tp = session_params.get("atr_multiplier_tp", 3.0)
+                    atr_mult_tp = optuna_tp
                 
                 sl_dist = atr_mult_sl * atr
                 
@@ -473,7 +496,8 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                     win_rate = session_params.get("win_rate", 0.55)
                     risk_reward = (tp - current_price) / abs(current_price - sl)
                     
-                    hurst_val = getattr(regime, 'hurst', 0.5)
+                    # --- CRITICAL #1: Hurst from correct source ---
+                    hurst_val = self.regime_metrics.get(symbol, {}).get('hurst', 0.5)
                     
                     # Get Correlation Adjustment (Portfolio Level)
                     risk_config = RiskConfig() 
@@ -572,11 +596,12 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 # logger.info(f"Trade rejected for {symbol} due to high correlation")
                 return False
             
-        # News Filter
-        if self.is_high_impact_news_soon(symbol):
-            logger.info(f"🚫 Trade rejected for {symbol} due to High Impact News soon")
+        # News Filter - MEDIUM #6: Duplicate call removed
+        is_news, news_msg = self.is_high_impact_news_soon(symbol)
+        if is_news:
+            logger.info(f"🚫 Trade rejected for {symbol}: {news_msg}")
             return False
-
+        
         # Session Filter (Session Analyzer identifies ASIA, LONDON, NY)
         session = get_active_session_name(datetime.now(UTC))
         if session == "UNKNOWN":
@@ -586,11 +611,6 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             return False
         self._notified_unknown_session = False
             
-        # News Filter
-        if self.is_high_impact_news_soon(symbol):
-            logger.info(f"🚫 [FILTER] {symbol} rejected due to High Impact News soon")
-            return False
-
         # TAREFA 4: Forex Weekend Gap Protection
         # Objetivo: Evitar volatilidade extrema e gaps de domingo (Sunday Open).
         # Regra: Warm-up de 30 minutos na abertura do mercado (Domingo 17:00 NY / 22:00 UTC).
@@ -625,10 +645,10 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
 
     def check_correlation(self, symbol: str) -> bool:
         """
-        Check correlation with open positions.
+        Check correlation with open positions. (MEDIUM #5: 500 bars window)
         """
         # Get data for symbol
-        df_sym = self.bot.cache.get_rates(symbol, 60, 100) # Using H1 for correlation
+        df_sym = self.bot.cache.get_rates(symbol, 60, 500) # Using H1 for correlation
         if df_sym is None or len(df_sym) < 30: return False
         
         returns_sym = df_sym['close'].pct_change().dropna()
@@ -636,7 +656,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         for pos_symbol in self.bot.positions:
             if pos_symbol == symbol: continue
             
-            df_pos = self.bot.cache.get_rates(pos_symbol, 60, 100)
+            df_pos = self.bot.cache.get_rates(pos_symbol, 60, 500)
             if df_pos is None or len(df_pos) < 30: continue
             
             returns_pos = df_pos['close'].pct_change().dropna()
@@ -670,9 +690,11 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         return get_active_session_name(datetime.now(UTC)) != "UNKNOWN"
 
     @staticmethod
-    def is_high_impact_news_soon(symbol: str) -> bool:
-        # Placeholder
-        return False
+    def is_high_impact_news_soon(symbol: str) -> Tuple[bool, str]:
+        """MEDIUM #4: Integration with legacy NewsFilter"""
+        if news_filter is not None:
+            return news_filter.is_news_blackout(symbol)
+        return False, "Livre (Filter disabled)"
 
     def evaluate_exit(self, position: Position, df: pd.DataFrame) -> Tuple[bool, str]:
         """
@@ -698,9 +720,29 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             if position.order_type == "BUY":
                 if rsi > rsi_high:
                     return True, f"RSI Exhaustion {regime} (>{rsi_high})"
+                
+                # --- CRITICAL #2: ATR Trailing Stop ---
+                atr = ta.atr(df['close'], df['high'], df['low'], length=14).iloc[-1]
+                current_price = df['close'].iloc[-1]
+                unrealized_atr = (current_price - position.entry_price) / atr
+                if unrealized_atr >= 1.5:
+                    new_sl = current_price - (1.0 * atr)
+                    if new_sl > position.stop_loss:
+                        logger.info(f"🛡️ [TRAILING] Moving SL for {position.symbol} to {new_sl:.5f}")
+                        self.bot.executor.modify_position(position.ticket, sl=new_sl)
             else: # SELL
                 if rsi < rsi_low:
                     return True, f"RSI Exhaustion {regime} (<{rsi_low})"
+                
+                # --- CRITICAL #2: ATR Trailing Stop ---
+                atr = ta.atr(df['close'], df['high'], df['low'], length=14).iloc[-1]
+                current_price = df['close'].iloc[-1]
+                unrealized_atr = (position.entry_price - current_price) / atr
+                if unrealized_atr >= 1.5:
+                    new_sl = current_price + (1.0 * atr)
+                    if new_sl < position.stop_loss:
+                        logger.info(f"🛡️ [TRAILING] Moving SL for {position.symbol} to {new_sl:.5f}")
+                        self.bot.executor.modify_position(position.ticket, sl=new_sl)
             
             # 2. Reversal Signals (EMA Crossover contrário)
             # This is more aggressive, but let's keep it subtle for now
@@ -804,6 +846,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         if df is None or len(df) < 200:
             return Panel(Text(f"Dados insuficientes para {symbol}", style="bold red")), 0.0, ""
 
+        q_params = settings.get_quant_params(symbol)
         regime = self.regimes.get(symbol, self.REGIME_RANGING)
 
         # 2. Prepare Data & Session Params
@@ -1024,7 +1067,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                  "Limite de posições atingido" if not pos_ok else "")
 
         # G. Quantitative Verification (NEW)
-        hurst_val = getattr(regime, 'hurst', 0.5)
+        hurst_val = self.regime_metrics.get(symbol, {}).get('hurst', 0.5)
         # We consider "Active" if it's not the default 0.5 or simply showing the value
         add_cond("Hurst Exponent (Regime)",
                  f"{hurst_val:.3f}",

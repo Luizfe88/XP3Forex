@@ -133,10 +133,18 @@ def calculate_atr_numpy(high, low, close, period):
             atr[i] = (atr[i - 1] * (period - 1) + tr[i - 1]) / period
     return atr
 
-# Placeholders (sobrescritos em main se Numba carregar)
-ema_numba = ema_numpy
-calculate_rsi_numba = calculate_rsi_numpy
-calculate_atr_numba = calculate_atr_numpy
+# Numba JIT Compilation (Global Scope)
+try:
+    from numba import njit
+    ema_numba           = njit(cache=True)(ema_numpy)
+    calculate_rsi_numba = njit(cache=True)(calculate_rsi_numpy)
+    calculate_atr_numba = njit(cache=True)(calculate_atr_numpy)
+    _NUMBA_AVAILABLE = True
+except ImportError:
+    _NUMBA_AVAILABLE = False
+    ema_numba = ema_numpy
+    calculate_rsi_numba = calculate_rsi_numpy
+    calculate_atr_numba = calculate_atr_numpy
 
 MT5_LOCK = threading.Lock()
 MT5_GLOBAL = None
@@ -331,178 +339,16 @@ def _apply_mt5_market_watch_filter(symbols: List[str]) -> None:
 # DATA LOADING (v7)
 # ===========================
 
-def load_data_v7(symbol: str):
-    df = None
-    source = "UNKNOWN"
-    try:
-        mt5 = MT5_GLOBAL
-        if mt5 is None:
-            import MetaTrader5 as mt5
-            with MT5_LOCK:
-                path = getattr(config, "MT5_TERMINAL_PATH", None)
-                ok = mt5.initialize(path=path) if path else mt5.initialize()
-            if not ok:
-                mt5 = None
-        if mt5 is not None:
-            reasons = []
-            candidates = [symbol]
-            try:
-                import utils_forex as utils
-                aliases = getattr(utils, "SYMBOL_ALIASES", {})
-                if isinstance(aliases, dict) and symbol in aliases:
-                    candidates.extend(list(aliases.get(symbol) or []))
-            except Exception:
-                pass
-            if ".NAS" in symbol:
-                candidates.append(symbol.split(".")[0])
-            if symbol.upper() == "US30":
-                candidates.extend(["US30Cash", "USA30"])
-            if symbol.upper() == "UK100":
-                candidates.extend(["UK100Cash", "UK100"])
-            try:
-                with MT5_LOCK:
-                    all_syms = mt5.symbols_get()
-                base = symbol.upper().replace(".", "").replace("_", "")
-                for s in all_syms or []:
-                    name = str(getattr(s, "name", "")).upper()
-                    norm = name.replace(".", "").replace("_", "")
-                    if base in norm or norm.startswith(base):
-                        candidates.append(s.name)
-            except Exception:
-                pass
-            resolved = None
-            for cand in candidates:
-                try:
-                    with MT5_LOCK:
-                        ok_sel = mt5.symbol_select(cand, True)
-                    if ok_sel:
-                        resolved = cand
-                        break
-                except Exception:
-                    continue
-            if resolved is None:
-                reasons.append(f"symbol_select_failed:{candidates[:5]}")
-                resolved = symbol
-            rates = None
-            try:
-                counts = [40000, 30000, 20000]
-                tf_list = [getattr(mt5, "TIMEFRAME_M15", None), getattr(mt5, "TIMEFRAME_M30", None), getattr(mt5, "TIMEFRAME_M5", None)]
-                for tf in [t for t in tf_list if t is not None]:
-                    for cnt in counts:
-                        with MT5_LOCK:
-                            rates = mt5.copy_rates_from_pos(resolved, tf, 0, cnt)
-                        if rates is not None and len(rates) >= 5000:
-                            break
-                    if rates is not None and len(rates) >= 5000:
-                        break
-            except Exception:
-                rates = None
-            if rates is not None and len(rates) > 0:
-                df = pd.DataFrame(rates)
-                df['time'] = pd.to_datetime(df['time'], unit='s')
-                df.set_index('time', inplace=True)
-                source = "MT5"
-        if MT5_GLOBAL is None:
-            try:
-                with MT5_LOCK:
-                    mt5.shutdown()
-            except Exception:
-                pass
-    except Exception:
-        pass
-    if df is None:
-        duka_file = DUKASCOPY_DIR / f"{symbol}_M15.csv"
-        if duka_file.exists():
-            try:
-                df = pd.read_csv(duka_file)
-                df['time'] = pd.to_datetime(df['time'])
-                df.set_index('time', inplace=True)
-                source = "DUKASCOPY"
-            except Exception:
-                df = None
-    if df is not None:
-        df = df[['open', 'high', 'low', 'close', 'tick_volume']].dropna()
-        pip_size = 0.01 if "JPY" in symbol or "XAU" in symbol else 0.0001
-        tick_value = 100.0 if "XAU" in symbol else (9.0 if "JPY" in symbol else 10.0)
-        news_dates = ['2026-01-28','2026-03-18','2026-05-06','2026-06-17','2026-07-29','2026-09-16','2026-11-05','2026-12-16','2026-01-09','2026-02-06','2026-03-06']
-        news_mask = np.zeros(len(df), dtype=np.bool_)
-        if isinstance(df.index, pd.DatetimeIndex):
-            for date_str in news_dates:
-                mask_day = (df.index.strftime('%Y-%m-%d') == date_str)
-                news_mask = news_mask | mask_day
-        return {"df": df, "pip_size": pip_size, "tick_value": tick_value, "source": source, "spread": 1.2, "news_mask": news_mask}
+YAHOO_TICKER_MAP: Dict[str, str] = {
+    "EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "USDJPY=X",
+    "USDCAD": "USDCAD=X", "USDCHF": "USDCHF=X", "AUDUSD": "AUDUSD=X",
+    "AUDJPY": "AUDJPY=X", "EURJPY": "EURJPY=X", "EURGBP": "EURGBP=X",
+    "USDTRY": "TRY=X",   "USDZAR": "ZAR=X",    "USDMXN": "MXN=X",
+    "XAUUSD": "GC=F",    "XAGUSD": "SI=F",      # futuros são mais confiáveis
+    "US30":   "^DJI",    "UK100":  "^FTSE",
+    "BTCUSD": "BTC-USD", "ETHUSD": "ETH-USD",
+}
 
-    def _map_symbol_to_yahoo(sym: str) -> Optional[str]:
-        s = sym.upper()
-        fx = {"EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "USDJPY=X", "USDCAD": "USDCAD=X", "USDCHF": "USDCHF=X", "AUDUSD": "AUDUSD=X", "AUDJPY": "AUDJPY=X", "EURJPY": "EURJPY=X", "EURGBP": "EURGBP=X"}
-        metals = {"XAUUSD": "XAUUSD=X", "XAGUSD": "XAGUSD=X", "XAUEUR": "XAUEUR=X", "XAGEUR": "XAGEUR=X", "XAUCHF": "XAUCHF=X", "XAGAUD": "XAGAUD=X", "XAUGBP": "XAUGBP=X", "XAUJPY": "XAUJPY=X"}
-        crypto = {"BTCUSD": "BTC-USD", "ETHUSD": "ETH-USD", "BNBUSD": "BNB-USD", "ADAUSD": "ADA-USD", "SOLUSD": "SOL-USD"}
-        indices = {"US30": "^DJI", "UK100": "^FTSE"}
-        if s in fx: return fx[s]
-        if s in metals: return metals[s]
-        if s in crypto: return crypto[s]
-        if s in indices: return indices[s]
-        if ".NAS" in s: return s.split(".")[0]
-        return None
-
-    def _normalize_df(df_in: pd.DataFrame) -> Optional[pd.DataFrame]:
-        if df_in is None or df_in.empty: return None
-        df2 = df_in.copy()
-        cols = {c.lower(): c for c in df2.columns}
-        oc = cols.get("open") or "Open"
-        hc = cols.get("high") or "High"
-        lc = cols.get("low") or "Low"
-        cc = cols.get("close") or "Close"
-        vc = cols.get("volume") or "Volume"
-        for c in [oc, hc, lc, cc]:
-            if c not in df2.columns: return None
-        df2 = df2.rename(columns={oc: "open", hc: "high", lc: "low", cc: "close"})
-        if vc in df2.columns:
-            df2 = df2.rename(columns={vc: "tick_volume"})
-        else:
-            df2["tick_volume"] = 0
-        if "time" in df2.columns:
-            df2 = df2.set_index("time")
-        df2.index = pd.to_datetime(df2.index)
-        return df2[["open", "high", "low", "close", "tick_volume"]].dropna()
-
-    try:
-        api_key = os.getenv("XP3_MASSIVE_API_KEY") or getattr(config, "MASSIVE_API_KEY", None)
-        if api_key:
-            url = f"https://api.massive.com/v1/marketdata/{symbol}/history"
-            params = {"interval": "15m", "limit": "40000"}
-            headers = {"Authorization": f"Bearer {api_key}"}
-            r = requests.get(url, params=params, headers=headers, timeout=8)
-            if r.ok:
-                j = r.json()
-                records = j.get("data") or j
-                if isinstance(records, list) and records:
-                    df_m = pd.DataFrame.from_records(records)
-                    if "timestamp" in df_m.columns:
-                        df_m["time"] = pd.to_datetime(df_m["timestamp"], unit="s", errors="coerce")
-                    df_norm = _normalize_df(df_m)
-                    if df_norm is not None and len(df_norm) >= 5000:
-                        pip_size = 0.01 if ("JPY" in symbol or "XAU" in symbol) else 0.0001
-                        tick_value = 100.0 if "XAU" in symbol else (9.0 if "JPY" in symbol else 10.0)
-                        news_mask = np.zeros(len(df_norm), dtype=np.bool_)
-                        return {"df": df_norm, "pip_size": pip_size, "tick_value": tick_value, "source": "MASSIVE", "spread": 1.2, "news_mask": news_mask}
-    except Exception as e:
-        logger.warning(f"⚠️ MASSIVE fallback falhou para {symbol}: {e}")
-
-    try:
-        ysym = _map_symbol_to_yahoo(symbol)
-        if ysym:
-            data = yf.download(ysym, period="720d", interval="15m", progress=False, threads=True)
-            df_y = _normalize_df(data)
-            if df_y is not None and len(df_y) >= 5000:
-                pip_size = 0.01 if ("JPY" in symbol or "XAU" in symbol) else 0.0001
-                tick_value = 100.0 if "XAU" in symbol else (9.0 if "JPY" in symbol else 10.0)
-                news_mask = np.zeros(len(df_y), dtype=np.bool_)
-                return {"df": df_y, "pip_size": pip_size, "tick_value": tick_value, "source": "YAHOO", "spread": 1.2, "news_mask": news_mask}
-    except Exception as e:
-        logger.warning(f"⚠️ YAHOO fallback falhou para {symbol}: {e}")
-
-    return None
 
 def _aggressive_mt5_symbol_search(symbol: str, mt5) -> Optional[str]:
     base = symbol.upper()
@@ -549,10 +395,8 @@ def _aggressive_mt5_symbol_search(symbol: str, mt5) -> Optional[str]:
 
 def _enhanced_yahoo_finance_loader(symbol: str) -> Optional[Dict]:
     try:
-        ticker_map = {"EURUSD": "EURUSD=X", "GBPUSD": "GBPUSD=X", "USDJPY": "USDJPY=X", "USDCAD": "USDCAD=X", "USDCHF": "USDCHF=X", "AUDUSD": "AUDUSD=X", "AUDJPY": "AUDJPY=X", "EURJPY": "EURJPY=X", "EURGBP": "EURGBP=X", "USDTRY": "TRY=X", "USDZAR": "ZAR=X", "USDMXN": "MXN=X", "XAUUSD": "GC=F", "XAGUSD": "SI=F", "US30": "^DJI", "UK100": "^FTSE", "NETH25": "^AEX", "BTCUSD": "BTC-USD", "ETHUSD": "ETH-USD"}
-        configs = [{"period": "730d", "interval": "15m"}, {"period": "365d", "interval": "15m"}, {"period": "730d", "interval": "30m"}, {"period": "365d", "interval": "1h"}]
         s = symbol.upper()
-        t = ticker_map.get(s)
+        t = YAHOO_TICKER_MAP.get(s)
         if not t:
             return None
         for cfg in configs:
@@ -608,8 +452,7 @@ def load_data_v7_enhanced(symbol: str) -> Optional[Dict]:
                     return {"df": df_clean, "pip_size": pip_size, "tick_value": tick_value, "source": "MT5", "spread": 1.2, "news_mask": np.zeros(len(df_clean), dtype=np.bool_)}
     yd = _enhanced_yahoo_finance_loader(symbol)
     if yd:
-        if yd:
-            yd["df"] = validate_data_quality(yd["df"])
+        yd["df"] = validate_data_quality(yd["df"])
         return yd
     api_key = os.getenv("XP3_MASSIVE_API_KEY") or getattr(config, "MASSIVE_API_KEY", None)
     if api_key:
@@ -663,22 +506,39 @@ def validate_data_quality(df: pd.DataFrame) -> pd.DataFrame:
         atr_safe = np.where(atr <= 0, np.nan, atr)
         spike_mask = rng > (5.0 * np.nanmedian(atr_safe))
         if np.any(spike_mask):
-            # winsorize: limitar highs/lows ao percentil 99/1 do período local
-            p99 = np.nanpercentile(df2['high'].values, 99)
-            p01 = np.nanpercentile(df2['low'].values, 1)
-            df2.loc[spike_mask, 'high'] = np.minimum(df2.loc[spike_mask, 'high'], p99)
-            df2.loc[spike_mask, 'low'] = np.maximum(df2.loc[spike_mask, 'low'], p01)
-            # Ajustar close dentro dos limites
-            df2.loc[spike_mask, 'close'] = np.clip(df2.loc[spike_mask, 'close'], df2.loc[spike_mask, 'low'], df2.loc[spike_mask, 'high'])
+            window = 500  # ~5 dias de dados M15
+            roll_p99 = df2['high'].rolling(window, min_periods=50).quantile(0.99)
+            roll_p01 = df2['low'].rolling(window, min_periods=50).quantile(0.01)
+
+            df2.loc[spike_mask, 'high'] = np.minimum(
+                df2.loc[spike_mask, 'high'],
+                roll_p99.loc[spike_mask].fillna(df2['high'].quantile(0.99))
+            )
+            df2.loc[spike_mask, 'low'] = np.maximum(
+                df2.loc[spike_mask, 'low'],
+                roll_p01.loc[spike_mask].fillna(df2['low'].quantile(0.01))
+            )
+            df2.loc[spike_mask, 'close'] = np.clip(
+                df2.loc[spike_mask, 'close'],
+                df2.loc[spike_mask, 'low'],
+                df2.loc[spike_mask, 'high']
+            )
     except Exception:
         pass
     return df2
 
 def validate_minimum_trades(data: Dict, symbol: str, min_trades: int = 10) -> bool:
     df = data["df"]
-    min_candles = min_trades * 500
+
+    # Busca os parâmetros reais do WFO para calcular o mínimo necessário
+    train_len = int(os.getenv("XP3_WFO_TRAIN_LEN", "12000"))
+    test_len  = int(os.getenv("XP3_WFO_TEST_LEN",  "2000"))
+    min_candles = train_len + test_len  # mínimo para 1 fold
+
     if len(df) < min_candles:
-        logger.warning(f"⚠️ {symbol}: Insuficiente ({len(df)} < {min_candles})")
+        logger.warning(
+            f"⚠️ {symbol}: Insuficiente ({len(df)} candles < {min_candles} necessários para WFO)"
+        )
         return False
     nan_ratio = df.isna().sum().sum() / max(1, (len(df) * len(df.columns)))
     if nan_ratio > 0.05:
@@ -697,12 +557,12 @@ def validate_minimum_trades(data: Dict, symbol: str, min_trades: int = 10) -> bo
 # ===========================
 
 def worker_process_asset(symbol, data):
-    import optimizer_optuna_forex as optimizer
-    import config_forex as config
     """
     Worker que processa um único ativo: WFO + Optuna + MC + ML.
     Recebe os dados já carregados para evitar race conditions no MT5.
     """
+    import optimizer_optuna_forex as optimizer
+    import config_forex as config
     # Se dados não foram carregados, retorna erro
     if data is None or len(data['df']) < 5000:
         return {"symbol": symbol, "status": "INSUFFICIENT_DATA"}
@@ -920,22 +780,12 @@ def main():
         print("❌ Pre-flight falhou. Corrija os itens acima e execute novamente.", flush=True)
         return
 
-    use_numba = os.getenv("XP3_DISABLE_NUMBA", "").strip().lower() not in ("1", "true", "yes")
+    use_numba = _NUMBA_AVAILABLE and os.getenv("XP3_DISABLE_NUMBA", "").strip().lower() not in ("1", "true", "yes")
     if use_numba:
-        print("--> Carregando Numba (lazy)...", flush=True)
-        t1 = time.time()
-        try:
-            from numba import njit
-            print(f"    ✅ Numba carregado em {time.time() - t1:.2f}s", flush=True)
-            ema_numba = njit(cache=True)(ema_numpy)
-            calculate_rsi_numba = njit(cache=True)(calculate_rsi_numpy)
-            calculate_atr_numba = njit(cache=True)(calculate_atr_numpy)
-            print("Aquecendo motor Numba (JIT)... aguarde.", flush=True)
-        except Exception as e:
-            print(f"    ❌ Falha ao carregar Numba: {e} | usando fallback NumPy", flush=True)
-            use_numba = False
+        print("--> Numba já compilado em nível de módulo.", flush=True)
+        print("Aquecendo motor Numba (JIT)... aguarde.", flush=True)
     else:
-        print("⚠️ Numba desativado por XP3_DISABLE_NUMBA; usando fallback NumPy.", flush=True)
+        print("⚠️ Numba desativado ou indisponível; usando fallback NumPy.", flush=True)
 
     x = np.array([1.0, 1.1, 1.2, 1.15, 1.18, 1.22], dtype=np.float64)
     _ = ema_numba(x, 3)
