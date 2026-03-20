@@ -71,7 +71,19 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             "losses": 0,
             "profit": 0.0,
             "trades_count": 0,
-            "regime_stats": {}
+            "regime_stats": {},
+            "rejection_stats": {
+                "high_spread": 0,
+                "sideways_no_extreme": 0,
+                "protection_mode": 0,
+                "institutional_filter": 0,
+                "adx_too_low": 0,
+                "rsi_exhaustion": 0,
+                "no_crossover": 0,
+                "h1_trend_conflict": 0,
+                "hurst_confluence_fail": 0,
+                "kelly_safety": 0
+            }
         }
         self.regime_metrics: Dict[str, Any] = {}
         
@@ -167,6 +179,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             # PROTECTION Override: Spread issue
             if not spread_ok:
                 regime_name = MarketRegime.PROTECTION
+                self.daily_stats["rejection_stats"]["high_spread"] += 1
                 
             # Store values
             self.regimes[symbol] = regime_name
@@ -194,6 +207,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
         # 1. Pre-checks (Institutional) + PROTECTION Regime
         if regime_name == MarketRegime.PROTECTION:
             logger.info(f"🚫 {symbol} REJECTED: PROTECTION mode active.")
+            self.daily_stats["rejection_stats"]["protection_mode"] += 1
             return None
 
         # Resolve regime object for backwards compatibility and parameter access
@@ -206,6 +220,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
 
         if not self.check_institutional_filters(symbol):
             logger.info(f"🚫 {symbol} REJECTED: Institutional filters failed.")
+            self.daily_stats["rejection_stats"]["institutional_filter"] += 1
             return None
 
         # 2. Get Session Optimized Parameters
@@ -267,14 +282,17 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
             # ADX Filter from Session
             if adx < adx_thresh:
                 logger.info(f"🚫 {symbol} REJECTED: ADX too low ({adx:.1f} < {adx_thresh})")
+                self.daily_stats["rejection_stats"]["adx_too_low"] += 1
                 return None
                 
             # --- RSI Exhaustion Filter (CRITICAL) ---
             if rsi > self.RSI_BUY_MAX:
                 logger.info(f"🚫 {symbol} BUY rejected: RSI Exhaustion ({rsi:.1f} > {self.RSI_BUY_MAX})")
+                self.daily_stats["rejection_stats"]["rsi_exhaustion"] += 1
                 return None
             if rsi < self.RSI_SELL_MIN:
                 logger.info(f"🚫 {symbol} SELL rejected: RSI Exhaustion ({rsi:.1f} < {self.RSI_SELL_MIN})")
+                self.daily_stats["rejection_stats"]["rsi_exhaustion"] += 1
                 return None
                 
             # Dynamic RSI Tolerance for NY Session (Strong Trend)
@@ -321,6 +339,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                         logger.info(f"⏳ {symbol} TREND: Crossover detected but kf_slope ({kf_slope:.6f}) direction mismatch.")
                     else:
                         logger.info(f"⏳ {symbol} TREND: No Crossover detected (KF: {kf_signal:.5f} | EMA: {ema_slow:.5f}). Waiting for pullback or new cycle.")
+                        self.daily_stats["rejection_stats"]["no_crossover"] += 1
                     
             elif regime_name == MarketRegime.SIDEWAYS:
                 # SIDEWAYS: Reversão à média nos extremos do RSI.
@@ -332,6 +351,9 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                     # Log why no signal in sideways
                     if rsi < 32 or rsi > 68:
                         logger.info(f"⏳ {symbol} SIDEWAYS: RSI Exhaustion reached ({rsi:.1f}), but no Crossover detected yet.")
+                        self.daily_stats["rejection_stats"]["rsi_exhaustion"] += 1
+                    else:
+                        self.daily_stats["rejection_stats"]["sideways_no_extreme"] += 1
             
             # Fallback a regimes legados se necessário ou se MarketRegime falhar
             if not signal_type:
@@ -343,6 +365,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                 h1_ok = self.check_h1_trend(symbol, signal_type)
                 if not h1_ok:
                     logger.info(f"🚫 Signal {signal_type} for {symbol} rejected by H1 Trend (EMA200 Conflict)")
+                    self.daily_stats["rejection_stats"]["h1_trend_conflict"] += 1
                     return None
 
                 # TAREFA 2: Implementação da Hierarquia de Regimes (Hurst Confluence)
@@ -354,6 +377,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                         h1_hurst = calculate_hurst_rs(df_h1['close'].values)
                         if h1_hurst <= 0.55:
                             logger.info(f"🚫 [HURST CONFLUENCE] {symbol} rejected: H1 Hurst ({h1_hurst:.2f}) indicates noise/reversion.")
+                            self.daily_stats["rejection_stats"]["hurst_confluence_fail"] += 1
                             return None
                         setattr(regime, 'h1_hurst', h1_hurst)
                 except Exception as h_err:
@@ -464,6 +488,7 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
                     
                     if kelly_fraction <= 0:
                         logger.warning(f"🚫 [KELLY SAFETY] {symbol} rejected: Kelly Fraction is zero or negative ({kelly_fraction:.4f}).")
+                        self.daily_stats["rejection_stats"]["kelly_safety"] += 1
                         return None
                         
                     # Calculate Final Equity Risk and Volume
@@ -688,19 +713,23 @@ class AdaptiveEmaRsiStrategy(BaseStrategy):
 
     def get_account_balance(self) -> float:
         try:
+            if getattr(settings, "USE_VIRTUAL_BALANCE", False):
+                return settings.VIRTUAL_BALANCE
             import MetaTrader5 as mt5
             info = mt5.account_info()
-            return info.balance if info else 10000.0
+            return info.balance if info else 100.0
         except:
-            return 10000.0
+            return 100.0
 
     def get_account_equity(self) -> float:
         try:
+            if getattr(settings, "USE_VIRTUAL_BALANCE", False):
+                return settings.VIRTUAL_BALANCE
             import MetaTrader5 as mt5
             info = mt5.account_info()
-            return info.equity if info else 10000.0
+            return info.equity if info else 100.0
         except:
-            return 10000.0
+            return 100.0
 
     def calculate_position_size(self, symbol: str, price: float, sl: float, risk_amount: float) -> float:
         dist = abs(price - sl)

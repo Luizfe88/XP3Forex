@@ -1017,16 +1017,23 @@ class XP3Bot:
             # 1. Rodar Learner
             learnings = self.learner.run_full_learning()
             
-            # 2. Gerar Relatório
+            # 2. Gerar Relatório de Aprendizado
             if learnings:
                 report_path = self.report_gen.generate_learning_report(learnings)
                 logger.info(f"📚 Lições do dia arquivadas em: {report_path}")
                 
-                # 3. Enviar para Telegram
+                # Enviar para Telegram
                 send_telegram_message("📊 *Relatório Diário de Aprendizado XP3 Disponível*")
                 send_telegram_document(report_path, caption=f"Learnings {datetime.now().strftime('%Y-%m-%d')}")
             else:
                 logger.warning("⚠️ O Ciclo de Aprendizado não gerou novos parâmetros (dados insuficientes?)")
+            
+            # 3. Gerar Relatório Didático de Desempenho (Novo)
+            perf_report = self.report_gen.generate_performance_report(self.strategy.daily_stats)
+            if perf_report:
+                logger.info(f"📈 Relatório de desempenho gerado: {perf_report}")
+                send_telegram_message("📖 *Relatório Didático de Desempenho e Filtros*")
+                send_telegram_document(perf_report, caption=f"Performance {datetime.now().strftime('%Y-%m-%d')}")
                 
             logger.info("✅ Manutenção Diária concluída com sucesso.")
         except Exception as e:

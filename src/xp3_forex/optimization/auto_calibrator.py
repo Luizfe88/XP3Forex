@@ -7,6 +7,7 @@ import logging
 from typing import List, Optional
 from xp3_forex.core.settings import settings
 from xp3_forex.utils.mt5_utils import get_rates, initialize_mt5, initialize_market_data
+from xp3_forex.mt5.symbol_manager import SymbolManager
 from xp3_forex.optimization.quant_optimizer import QuantOptimizer, save_optimized_quant_params
 
 import argparse
@@ -38,17 +39,11 @@ def run_total_automation(target_symbols: Optional[List[str]] = None, n_trials: i
         symbols = settings.symbols_list
         
     if "ALL" in [s.upper() for s in symbols]:
-        logger.info("🌍 'ALL' detectado. Buscando todos os símbolos do Market Watch...")
-        all_mt5_symbols = mt5.symbols_get()
-        if all_mt5_symbols:
-            # Filtra apenas o que está no Market Watch (visible=True)
-            symbols = [s.name for s in all_mt5_symbols if s.visible]
-            if not symbols:
-                 # Fallback: Se o Market Watch estiver vazio, pega os principais
-                 logger.warning("⚠️ Market Watch vazio. Buscando primeiros 20 ativos do terminal...")
-                 symbols = [s.name for s in all_mt5_symbols][:20]
-        else:
-            logger.warning("⚠️ Nenhum símbolo encontrado no terminal.")
+        logger.info("🌍 'ALL' detectado. Filtrando símbolos permitidos via SymbolManager...")
+        sm = SymbolManager()
+        symbols = sm.get_tradable_symbols(ignore_spread=True)
+        if not symbols:
+            logger.warning("⚠️ Nenhum símbolo permitido encontrado.")
             
     logger.info(f"🔍 Símbolos para calibração: {symbols}")
     

@@ -142,15 +142,17 @@ class Settings(BaseSettings):
     # ===========================
     # 3. RISK MANAGEMENT
     # ===========================
-    RISK_PER_TRADE: float = Field(default=0.5, description="% do saldo por trade (ex: 0.5 para 0.5%)")
-    MAX_LOTS_PER_TRADE: float = Field(default=1.0, description="Volume máximo por trade (lotes)")
+    USE_VIRTUAL_BALANCE: bool = Field(default=False, description="Usar saldo virtual em vez do real do MT5")
+    VIRTUAL_BALANCE: float = Field(default=100.0, description="Saldo virtual para cálculos de risco ($)")
+    RISK_PER_TRADE: float = Field(default=1.0, description="% do saldo por trade (ex: 1.0 para 1.0%)")
+    MAX_LOTS_PER_TRADE: float = Field(default=0.01, description="Volume máximo por trade (lotes)")
     FORCE_EXECUTION: bool = Field(default=False, description="Bypass filtros para testes (DEBUG ONLY)")
     RETRY_ATTEMPTS: int = Field(default=5, description="Tentativas de envio de ordem")
     RETRY_BACKOFF: float = Field(default=2.0, description="Backoff exponencial (segundos)")
-    MAX_POSITIONS: int = Field(default=8, description="Máximo de posições simultâneas")
+    MAX_POSITIONS: int = Field(default=2, description="Máximo de posições simultâneas")
     MAX_DAILY_LOSS_PERCENT: float = Field(default=3.0, description="Perda máxima diária (%)")
     KILL_SWITCH_DD_PCT: float = Field(default=0.05, description="Kill Switch se DD Global > X% (0.05 = 5%)")
-    LOSS_COOLDOWN_MINUTES: int = Field(default=60, description="Minutos de pausa após um Stop Loss no mesmo ativo")
+    LOSS_COOLDOWN_MINUTES: int = Field(default=720, description="Minutos de pausa após um Stop Loss no mesmo ativo")
     MIN_HOLDING_TIME: int = Field(default=60, description="Tempo mínimo de permanência (segundos) antes de um Dynamic Exit")
     
     # Spread Thresholds (Points)
@@ -160,11 +162,13 @@ class Settings(BaseSettings):
     MAX_SPREAD_CRYPTO: int = Field(default=3000, description="Max spread for Crypto (points)")
     MAX_SPREAD_METALS: int = Field(default=100, description="Max spread for Metals (points)")
     
+    ALLOWED_ASSET_CATEGORIES: str = Field(default="major,metal,index,exotic,crypto", description="Categorias de ativos permitidas (separadas por vírgula)")
+
     # Novos Mecanismos de Defesa (P&L Base)
-    PROFIT_ACTIVATION_THRESHOLD: float = Field(default=250.0, description="Lucro mínimo para ativar o Profit Trailing Shield ($)")
+    PROFIT_ACTIVATION_THRESHOLD: float = Field(default=3.0, description="Lucro mínimo para ativar o Profit Trailing Shield ($)")
     PROFIT_TRAILING_PERCENT: float = Field(default=0.25, description="Percentual de devolução permitido do lucro máximo (ex: 0.25 = 25%)")
-    MAX_LOSS_DOLLARS: float = Field(default=-150.0, description="Perda financeira máxima permitida por posição ($)")
-    BREAK_EVEN_TRIGGER: float = Field(default=80.0, description="Lucro atingido para mover o SL ao Break-Even ($)")
+    MAX_LOSS_DOLLARS: float = Field(default=-2.0, description="Perda financeira máxima permitida por posição ($)")
+    BREAK_EVEN_TRIGGER: float = Field(default=1.5, description="Lucro atingido para mover o SL ao Break-Even ($)")
 
     MAX_WEEKLY_LOSS_PERCENT: float = Field(default=10.0, description="Perda máxima semanal (%)")
     MAX_MONTHLY_LOSS_PERCENT: float = Field(default=15.0, description="Perda máxima mensal (%)")

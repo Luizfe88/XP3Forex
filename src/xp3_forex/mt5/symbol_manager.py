@@ -113,9 +113,11 @@ class SymbolManager:
     def _is_safe_category(self, symbol: str) -> bool:
         """Verifica se a categoria é segura para trading automático"""
         category = self._categorize_symbol(symbol)
-        # Permite todas as categorias institucionais se o usuário solicitou escaneamento total.
-        # O filtro real de segurança será o Spread e o Trade Mode.
-        return category in ["major", "metal", "index", "exotic", "crypto"]
+        
+        # Get allowed categories from settings
+        allowed = [c.strip().lower() for c in settings.ALLOWED_ASSET_CATEGORIES.split(",") if c.strip()]
+        
+        return category in allowed
 
     def check_spread(self, symbol: str) -> bool:
         """

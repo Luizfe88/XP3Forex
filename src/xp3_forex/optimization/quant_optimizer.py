@@ -9,6 +9,7 @@ import pandas as pd
 import logging
 import json
 from typing import Dict, Any, List, Optional
+from datetime import datetime
 from pathlib import Path
 
 from xp3_forex.core.settings import settings

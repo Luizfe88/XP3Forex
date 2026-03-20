@@ -78,10 +78,18 @@ class TradeExecutor:
         # When margin == 0 (no positions), margin_level is undefined (set to inf)
         margin_level = account.margin_level if account.margin > 0 else float("inf")
 
+        # Use virtual balance if enabled
+        if getattr(settings, "USE_VIRTUAL_BALANCE", False):
+            balance = settings.VIRTUAL_BALANCE
+            equity = balance # Simple approximation for virtual wallet
+        else:
+            balance = account.balance
+            equity = account.equity
+
         info = {
             "healthy": True,
-            "balance": account.balance,
-            "equity": account.equity,
+            "balance": balance,
+            "equity": equity,
             "margin": account.margin,
             "margin_free": account.margin_free,
             "margin_level": margin_level,
@@ -178,7 +186,12 @@ class TradeExecutor:
             if not account_info:
                 return 0.01
 
-            balance = account_info.balance
+            # Use virtual balance if enabled
+            if getattr(settings, "USE_VIRTUAL_BALANCE", False):
+                balance = settings.VIRTUAL_BALANCE
+            else:
+                balance = account_info.balance
+            
             risk_amount = balance * (risk_percent / 100.0)
 
             symbol_info = get_symbol_info(symbol)

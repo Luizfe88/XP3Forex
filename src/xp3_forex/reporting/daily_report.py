@@ -124,6 +124,82 @@ class DailyReportGenerator:
             logger.error(f"Erro ao salvar relatório: {e}")
             return None
 
+    def generate_performance_report(self, stats: Dict[str, Any]):
+        """Gera um relatório didático de desempenho e filtros do dia."""
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        report_path = self.reports_dir / f"performance_report_{date_str}.md"
+        
+        wins = stats.get("wins", 0)
+        losses = stats.get("losses", 0)
+        profit = stats.get("profit", 0.0)
+        total_trades = wins + losses
+        win_rate = (wins / total_trades * 100) if total_trades > 0 else 0
+        
+        rejections = stats.get("rejection_stats", {})
+        
+        lines = [
+            f"# 📊 Relatório de Desempenho Didático - {date_str}",
+            "",
+            "Olá! Aqui está o resumo das operações e filtros de hoje.",
+            "",
+            "## 💰 Resultado do Dia",
+            f"- **Trades Realizados:** {total_trades}",
+            f"- **Wins:** {wins} ✅",
+            f"- **Losses:** {losses} ❌",
+            f"- **Taxa de Acerto:** {win_rate:.1f}%",
+            f"- **Lucro/Prejuízo Total:** `${profit:.2f}`",
+            "",
+            "---",
+            "",
+            "## 🛡️ Por que não houve mais trades? (Filtros Ativados)",
+            "O robô analisou o mercado constantemente e aplicou os seguintes filtros para proteger seu capital:",
+            "",
+            "| Motivo da Rejeição | Vezes Ativado | Explicação Didática |",
+            "| :--- | :---: | :--- |",
+        ]
+        
+        descriptions = {
+            "high_spread": "Spread muito alto. O custo de entrada seria maior que o lucro provável.",
+            "sideways_no_extreme": "Mercado Lateral. O preço não atingiu níveis de 'exagero' para operar.",
+            "protection_mode": "Modo de Segurança. Volatilidade errática detectada pelo sistema quant.",
+            "institutional_filter": "Filtro Institucional. News, Drawdown máximo ou Horário proibido.",
+            "adx_too_low": "Falta de Tendência. O mercado está sem força (ADX baixo).",
+            "rsi_exhaustion": "Exaustão (Topo/Fundo). O preço já andou muito, risco de reversão imediata.",
+            "no_crossover": "Falta de Gatilho. A tendência existe, mas não houve o cruzamento de confirmação.",
+            "h1_trend_conflict": "Conflito de Tempo. O M15 queria subir, mas o H1 ainda mostra queda.",
+            "hurst_confluence_fail": "Ruído de Mercado. O Expoente de Hurst detectou que o movimento era apenas ruído.",
+            "kelly_safety": "Gestão de Risco. O risco calculado era maior que a margem segura permitida."
+        }
+        
+        for key, count in rejections.items():
+            if count > 0:
+                desc = descriptions.get(key, "Filtro técnico de segurança.")
+                label = key.replace("_", " ").title()
+                lines.append(f"| **{label}** | {count} | {desc} |")
+        
+        if not any(rejections.values()) and total_trades == 0:
+            lines.append("| **Sem Oportunidades** | - | O mercado não apresentou padrões operáveis hoje. |")
+
+        lines.append("")
+        lines.append("## 💡 Conclusão do Dia")
+        if profit > 0:
+            lines.append("Hoje o sistema conseguiu capturar boas oportunidades e manter a disciplina. Os filtros ajudaram a evitar entradas falsas.")
+        elif profit < 0:
+            lines.append("Apesar das perdas, os filtros evitaram um prejuízo maior. O sistema continuará aprendendo com esses movimentos.")
+        else:
+            lines.append("Dia de preservação de capital. O robô priorizou a segurança e evitou mercados de baixa probabilidade.")
+            
+        lines.append("\n---")
+        lines.append(f"Gerado automaticamente pelo XP3 Pro em {datetime.now().strftime('%H:%M:%S BRT')}")
+
+        try:
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.write("\n".join(lines))
+            return report_path
+        except Exception as e:
+            logger.error(f"Erro ao salvar relatório de desempenho: {e}")
+            return None
+
 if __name__ == "__main__":
     # Teste
     gen = DailyReportGenerator()
