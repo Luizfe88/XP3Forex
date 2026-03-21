@@ -109,6 +109,43 @@ def init_project(args):
             f.write("MT5_LOGIN=123456\nMT5_PASSWORD=secret\nMT5_SERVER=MetaQuotes-Demo\nSYMBOLS=EURUSD,GBPUSD\n")
         print("✅ Arquivo .env criado com configurações padrão.")
 
+def run_optimization(args):
+    """Inicia o ciclo de aprendizado/otimização"""
+    print(f"\n🧠 XP3 PRO FOREX - WEEKLY OPTIMIZATION (LEARNER)")
+    print("=" * 50)
+    
+    try:
+        from xp3_forex.optimization.learner import DailyLearner
+        from xp3_forex.utils.mt5_utils import initialize_mt5
+        from xp3_forex.mt5.symbol_manager import SymbolManager
+        
+        if not initialize_mt5():
+            print("❌ Erro: Não foi possível inicializar o MT5.")
+            return
+
+        # Resolve os símbolos (cuidando do "ALL")
+        sm = SymbolManager()
+        if args.symbols:
+            symbols = args.symbols.split(",")
+        elif "ALL" in settings.symbols_list:
+            print("🔍 Buscando todos os ativos negociáveis da corretora...")
+            symbols = sm.get_tradable_symbols(ignore_spread=True)
+        else:
+            symbols = settings.symbols_list
+
+        print(f"📈 Ativos alvo ({len(symbols)}): {symbols[:10]}{'...' if len(symbols) > 10 else ''}")
+        print("=" * 50)
+        
+        learner = DailyLearner(symbols)
+        results = learner.run_full_learning()
+        if results:
+            print(f"\n✅ Otimização finalizada para {len(results)} ativos.")
+        else:
+            print("\n⚠️ Otimização concluída sem atualizações de parâmetros (confira os logs).")
+    except Exception as e:
+        logger.exception(f"Erro durante a otimização: {e}")
+        sys.exit(1)
+
 def main():
     parser = argparse.ArgumentParser(description="XP3 PRO FOREX CLI")
     subparsers = parser.add_subparsers(dest="command", help="Comandos disponíveis")
@@ -125,6 +162,13 @@ def main():
     init_parser = subparsers.add_parser("init", help="Inicializa projeto")
     init_parser.add_argument("--force", action="store_true", help="Forçar sobrescrita")
     
+    # Schedule / Optimize
+    schedule_parser = subparsers.add_parser("schedule", help="Inicia o ciclo de otimização semanal")
+    schedule_parser.add_argument("--symbols", help="Lista de símbolos (override .env)")
+    
+    optimize_parser = subparsers.add_parser("optimize", help="Alias para schedule")
+    optimize_parser.add_argument("--symbols", help="Lista de símbolos (override .env)")
+    
     args = parser.parse_args()
     
     if args.command == "run":
@@ -133,6 +177,8 @@ def main():
         run_monitor(args)
     elif args.command == "init":
         init_project(args)
+    elif args.command in ["schedule", "optimize"]:
+        run_optimization(args)
     else:
         parser.print_help()
 

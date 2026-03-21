@@ -4,10 +4,6 @@ Automatiza a recalibração de parâmetros usando SessionOptimizer.
 """
 
 import logging
-import json
-from datetime import datetime, timedelta
-import pandas as pd
-from pathlib import Path
 from typing import Dict, Any, List
 
 from xp3_forex.core.settings import settings
@@ -33,10 +29,12 @@ class DailyLearner:
         
         for symbol in self.symbols:
             try:
-                # Pegar dados de H1 para otimização de sessão (mais estável)
-                # 24 barras por dia * 30 dias = 720 barras. Pegamos 1000 para ter margem.
-                df = get_rates(symbol, 60, 1000)
-                if df is None or len(df) < 100:
+                # Quantidade necessária considerando o filtro de sessão:
+                # ASIA = 10h/24h = 42% dos candles M15
+                # Mínimo 1000 barras pós-filtro → precisamos de 1000 / 0.42 ≈ 2.400 barras M15 brutas
+                # Usar 3.000 barras brutas garante margem para todas as sessões
+                df = get_rates(symbol, 15, 3000)
+                if df is None or len(df) < 500:
                     logger.warning(f"Dados insuficientes para aprender com {symbol}")
                     continue
                 
@@ -46,11 +44,13 @@ class DailyLearner:
                 for sess in ["ASIA", "LONDON", "NY"]:
                     logger.info(f"🧠 Aprendendo com {symbol} na sessão {sess}...")
                     optimizer = SessionOptimizer(symbol, sess, df)
-                    best_params = optimizer.run_optimization(n_trials=30) # 30 trials por sessão
+                    best_params, best_value = optimizer.run_optimization(n_trials=30)
                     
-                    if best_params:
+                    if best_params and best_value > 0.0:
                         symbol_learnings[sess] = best_params
                         update_session_params_json(symbol, sess, best_params)
+                    else:
+                        logger.warning(f"⚠️ {symbol}/{sess}: Score {best_value} — sem trades suficientes ou sem lucro. Ignorando atualização.")
                 
                 if symbol_learnings:
                     results[symbol] = symbol_learnings

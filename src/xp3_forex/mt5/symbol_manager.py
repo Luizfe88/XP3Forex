@@ -4,7 +4,7 @@ import time
 import logging
 from threading import Lock
 from typing import Optional, Dict, Any, List, Set, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from xp3_forex.utils.mt5_utils import mt5_exec
 from xp3_forex.core.settings import settings
 
@@ -174,7 +174,8 @@ class SymbolManager:
 
         # Categorizar e pegar threshold
         category = self._categorize_symbol(symbol)
-        max_spread = self._get_max_spread_for_category(category)
+        current_hour_utc = datetime.now(timezone.utc).hour
+        max_spread = self._get_max_spread_for_category(category, current_hour_utc)
         
         if spread_points > max_spread:
             # Log apenas 1x por dia ou debug
@@ -254,13 +255,16 @@ class SymbolManager:
             
         return "exotic" # Fallback perigoso mas filtrado pelo spread alto
 
-    def _get_max_spread_for_category(self, category: str) -> int:
-        if category == "major": return settings.MAX_SPREAD_MAJORS
-        if category == "exotic": return settings.MAX_SPREAD_EXOTICS
-        if category == "index": return settings.MAX_SPREAD_INDICES
-        if category == "crypto": return settings.MAX_SPREAD_CRYPTO
-        if category == "metal": return settings.MAX_SPREAD_METALS
-        return settings.MAX_SPREAD_MAJORS # Default
+    def _get_max_spread_for_category(self, category: str, current_hour_utc: int = None) -> int:
+        base_limits = {"major": 30, "minor": 60, "exotic": 120}
+        limit = base_limits.get(category, 60)
+        
+        # Relaxar fora do horário de maior liquidez (08h–17h UTC)
+        if current_hour_utc is not None:
+            if not (8 <= current_hour_utc <= 17):
+                limit = int(limit * 1.8)  # 30 → 54 para majors fora do horário
+        
+        return limit
 
     def resolve_name(self, base_symbol: str) -> Optional[str]:
         """

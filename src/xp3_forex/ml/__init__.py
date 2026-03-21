@@ -1,1 +1,1 @@
-"""ML module for XP3 PRO FOREX"""
+from .model import train_ml_model, predict_ml_model
